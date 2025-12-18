@@ -319,9 +319,9 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
       const margin = 15;
       let yPos = 0;
 
-      // En-tête avec fond coloré
+      // En-tête avec fond coloré (plus grand pour inclure praticien)
       pdf.setFillColor(147, 51, 234); // Purple
-      pdf.rect(0, 0, pageWidth, 32, 'F');
+      pdf.rect(0, 0, pageWidth, 38, 'F');
 
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(18);
@@ -331,9 +331,21 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       pdf.text(contextInfo?.centreNom || 'HelloParo', margin, 20);
-      pdf.text('Date: ' + (patientInfo?.date || new Date().toLocaleDateString('fr-FR')), margin, 27);
 
-      yPos = 40;
+      // Praticien et date
+      const praticienText = contextInfo?.praticienNom ? 'Dr ' + contextInfo.praticienNom : '';
+      const adresseParText = diagnostic.adressePar ? 'Adresse par: ' + diagnostic.adressePar : '';
+
+      if (praticienText) {
+        pdf.text(praticienText, margin, 27);
+      }
+      if (adresseParText) {
+        pdf.text(adresseParText, pageWidth - margin - pdf.getTextWidth(adresseParText), 27);
+      }
+
+      pdf.text('Date: ' + (patientInfo?.date || new Date().toLocaleDateString('fr-FR')), margin, 34);
+
+      yPos = 46;
 
       // Informations patient
       pdf.setTextColor(0, 0, 0);
