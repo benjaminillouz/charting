@@ -1,0 +1,825 @@
+import React, { useState, useEffect } from 'react';
+
+// Textes prédéfinis pour la CAT
+const CAT_TEXTS = {
+  hygiene: "Un protocole d'hygiène a été remis lors de la première consultation. C'est une étape clé du traitement. Un rdv de contrôle est prévu un mois après le premier rendez-vous. Lors de ce contrôle un bilan parodontal approfondi sera peut-être préconisé.",
+  detartrage: "Un détartrage supra et sous gingival est recommandé.",
+  surfacage: "Un débridement sous gingival (surfaçage) est recommandé.",
+  facteurRetention: "Afin de favoriser le contrôle de plaque il est conseillé de refaire la restauration/prothèse sur la dent XXX. Je vous invite à contacter votre praticien traitant.",
+  sevrageTabac: "Dans le cadre de votre pathologie gingivale un rdv avec un tabacologue est conseillé. Renseignez-vous auprès de votre médecin traitant.",
+  substitutionMed: "Il est conseillé de prendre rdv avec le professionnel de santé qui vous a prescrit : XXXX. Ce médicament est responsable de l'hyperplasie/hypertrophie gingivale. Une substitution médicamenteuse est éventuellement possible.",
+  adressage: "Suite à l'examen clinique, veuillez trouver ci-joint un courrier d'adressage à un confrère/consœur compétent (médecin traitant, endocrinologue, cardiologue, spécialiste en dermatologie buccale).",
+  suiviParo: "Il est recommandé de venir en rdv de contrôle dans XXX mois puis tous les XXX la première année.",
+  chirurgie: "Suite à la réévaluation une thérapeutique chirurgicale est recommandée au niveau de XXXX.",
+  prothese: "Une réhabilitation prothétique est recommandée. Nous vous invitons à prendre rdv avec votre praticien traitant.",
+  odf: "Une réhabilitation orthodontique est recommandée. Nous vous invitons à prendre rdv avec votre praticien traitant. Un suivi parodontal régulier est fortement conseillé pendant toute la durée du traitement orthodontique."
+};
+
+// Classification des stades
+const STADE_CRITERIA = {
+  1: {
+    perteAttache: "1-2 mm",
+    alveolyse: "Tiers coronaire (<15%)",
+    dentsAbsentes: 0,
+    poches: "≤ 4 mm",
+    alveolyseType: "Horizontale",
+    lir: "Non ou classe I",
+    defautCrestal: "Non ou léger",
+    rehabilitationComplexe: false
+  },
+  2: {
+    perteAttache: "3-4 mm",
+    alveolyse: "Tiers coronaire (15-33%)",
+    dentsAbsentes: 0,
+    poches: "≤ 5 mm",
+    alveolyseType: "Horizontale",
+    lir: "Non ou classe I",
+    defautCrestal: "Non ou léger",
+    rehabilitationComplexe: false
+  },
+  3: {
+    perteAttache: "≥ 5 mm",
+    alveolyse: "Tiers moyen ou apical",
+    dentsAbsentes: "≤ 4",
+    poches: "≥ 6 mm",
+    alveolyseType: "Verticale ≥ 3mm",
+    lir: "Classe II ou III",
+    defautCrestal: "Modéré",
+    rehabilitationComplexe: false
+  },
+  4: {
+    perteAttache: "≥ 5 mm",
+    alveolyse: "Tiers moyen ou apical",
+    dentsAbsentes: "≥ 5",
+    poches: "≥ 6 mm",
+    alveolyseType: "Verticale ≥ 3mm",
+    lir: "Classe II ou III",
+    defautCrestal: "Sévère",
+    rehabilitationComplexe: true
+  }
+};
+
+// Composant Section pliable
+const CollapsibleSection = ({ title, icon, children, defaultOpen = false, color = "sky" }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  const colorClasses = {
+    sky: "bg-sky-50 border-sky-200 text-sky-800",
+    amber: "bg-amber-50 border-amber-200 text-amber-800",
+    red: "bg-red-50 border-red-200 text-red-800",
+    green: "bg-green-50 border-green-200 text-green-800",
+    purple: "bg-purple-50 border-purple-200 text-purple-800",
+    slate: "bg-slate-50 border-slate-200 text-slate-800"
+  };
+
+  return (
+    <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-4 py-3 flex items-center justify-between ${colorClasses[color]} border-b`}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{icon}</span>
+          <h3 className="font-semibold">{title}</h3>
+        </div>
+        <svg
+          className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="p-4 space-y-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Composant Toggle Oui/Non
+const YesNoToggle = ({ value, onChange, label, description }) => (
+  <div className="flex items-center justify-between py-2">
+    <div>
+      <span className="font-medium text-slate-700">{label}</span>
+      {description && <p className="text-sm text-slate-500">{description}</p>}
+    </div>
+    <div className="flex gap-1">
+      <button
+        onClick={() => onChange(true)}
+        className={`px-4 py-1.5 rounded-l-lg text-sm font-medium transition-all ${
+          value === true
+            ? 'bg-green-500 text-white'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`}
+      >
+        Oui
+      </button>
+      <button
+        onClick={() => onChange(false)}
+        className={`px-4 py-1.5 rounded-r-lg text-sm font-medium transition-all ${
+          value === false
+            ? 'bg-red-500 text-white'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`}
+      >
+        Non
+      </button>
+    </div>
+  </div>
+);
+
+// Composant Sélecteur de choix multiples
+const MultiSelect = ({ options, value, onChange, label }) => (
+  <div className="space-y-2">
+    <label className="font-medium text-slate-700">{label}</label>
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            value === opt.value
+              ? 'bg-sky-500 text-white shadow-md'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+// Composant principal de diagnostic
+export default function DiagnosticParodontal({ stats, patientInfo, contextInfo }) {
+  const [diagnostic, setDiagnostic] = useState({
+    adressePar: '',
+    motifConsultation: '',
+    antecedentsGeneraux: '',
+    facteursRisque: {
+      diabete: false,
+      hta: false,
+      stress: false,
+      tabac: false,
+      tabacQuantite: ''
+    },
+    antecedentsFamiliaux: null,
+    traitementMedicamenteux: null,
+    traitementDetails: '',
+    typeExamen: 'initial',
+    historiqueSoinsParo: null,
+    historiqueSoinsDetails: '',
+    hygienePerfectible: null,
+    materielHygiene: '',
+    frequenceBrossage: '',
+    signesGingivite: {
+      inflammation: null,
+      oedeme: null,
+      saignements: null,
+      chaleur: null,
+      erytheme: null,
+      douleurs: null,
+      halitose: null,
+      alterationGout: null,
+      alterationQualiteVie: null
+    },
+    aspectGingival: '',
+    chartingRealise: true,
+    bilonLongCone: null,
+    perteAttacheMax: '',
+    alveolyseRadio: '',
+    dentsAbsentesParo: 0,
+    profondeurPochesMax: 0,
+    typeAlveolyse: '',
+    lesionInterradiculaire: '',
+    defautCrestal: '',
+    rehabilitationComplexe: null,
+    etendue: '',
+    diagnosticType: '',
+    gingiviteDetails: {
+      induitePlaque: null,
+      moduleFacteurs: null,
+      accroissementMedicamenteux: null
+    },
+    gingiviteNonPlaqueType: '',
+    stade: null,
+    grade: null,
+    cat: {
+      enseignementHygiene: false,
+      detartrage: false,
+      surfacage: false,
+      facteurRetention: false,
+      sevrageTabac: false,
+      substitutionMed: false,
+      adressage: false,
+      suiviParo: false,
+      chirurgie: false,
+      prothese: false,
+      odf: false
+    },
+    notesLibres: '',
+    conclusionTexte: ''
+  });
+
+  // Calcul automatique du stade
+  const calculateStade = () => {
+    const { profondeurPochesMax, dentsAbsentesParo, lesionInterradiculaire, rehabilitationComplexe } = diagnostic;
+
+    if (rehabilitationComplexe === true || dentsAbsentesParo >= 5) return 4;
+    if (profondeurPochesMax >= 6 || ['classeII', 'classeIII'].includes(lesionInterradiculaire) || (dentsAbsentesParo > 0 && dentsAbsentesParo <= 4)) return 3;
+    if (profondeurPochesMax >= 4 && profondeurPochesMax <= 5) return 2;
+    if (profondeurPochesMax <= 4 && profondeurPochesMax > 0) return 1;
+    return null;
+  };
+
+  // Calcul automatique du grade
+  const calculateGrade = () => {
+    const { facteursRisque } = diagnostic;
+    if (facteursRisque.tabac && facteursRisque.tabacQuantite === 'forte') return 'C';
+    if (facteursRisque.tabac || facteursRisque.diabete) return 'B';
+    return 'A';
+  };
+
+  useEffect(() => {
+    if (diagnostic.diagnosticType === 'parodontite') {
+      const calculatedStade = calculateStade();
+      const calculatedGrade = calculateGrade();
+      if (calculatedStade && !diagnostic.stade) setDiagnostic(prev => ({ ...prev, stade: calculatedStade }));
+      if (calculatedGrade && !diagnostic.grade) setDiagnostic(prev => ({ ...prev, grade: calculatedGrade }));
+    }
+  }, [diagnostic.profondeurPochesMax, diagnostic.dentsAbsentesParo, diagnostic.facteursRisque, diagnostic.diagnosticType]);
+
+  useEffect(() => {
+    if (stats) {
+      setDiagnostic(prev => ({
+        ...prev,
+        profondeurPochesMax: stats.deepPockets > 0 ? 6 : (stats.moderatePockets > 0 ? 4 : 3)
+      }));
+    }
+  }, [stats]);
+
+  // Générer le texte de conclusion
+  const generateConclusion = () => {
+    let conclusion = [];
+
+    if (diagnostic.diagnosticType === 'parodontite') {
+      conclusion.push(`Diagnostic : Parodontite Stade ${diagnostic.stade} Grade ${diagnostic.grade}`);
+      if (diagnostic.etendue) {
+        conclusion.push(`Etendue : ${diagnostic.etendue === 'generalisee' ? 'Generalisee' : diagnostic.etendue === 'localisee' ? 'Localisee' : 'Distribution molaires/incisives'}`);
+      }
+    } else if (diagnostic.diagnosticType === 'gingivite_plaque') {
+      conclusion.push("Diagnostic : Gingivite induite par la plaque");
+    } else if (diagnostic.diagnosticType === 'gingivite_non_plaque') {
+      conclusion.push(`Diagnostic : Maladie gingivale non liee a la plaque - ${diagnostic.gingiviteNonPlaqueType}`);
+    } else if (diagnostic.diagnosticType === 'sante') {
+      conclusion.push("Diagnostic : Sante parodontale");
+    }
+
+    conclusion.push("\nConduite a tenir :");
+    if (diagnostic.cat.enseignementHygiene) conclusion.push(`- ${CAT_TEXTS.hygiene}`);
+    if (diagnostic.cat.detartrage) conclusion.push(`- ${CAT_TEXTS.detartrage}`);
+    if (diagnostic.cat.surfacage) conclusion.push(`- ${CAT_TEXTS.surfacage}`);
+    if (diagnostic.cat.sevrageTabac) conclusion.push(`- ${CAT_TEXTS.sevrageTabac}`);
+    if (diagnostic.cat.suiviParo) conclusion.push(`- ${CAT_TEXTS.suiviParo}`);
+    if (diagnostic.cat.chirurgie) conclusion.push(`- ${CAT_TEXTS.chirurgie}`);
+    if (diagnostic.cat.prothese) conclusion.push(`- ${CAT_TEXTS.prothese}`);
+    if (diagnostic.cat.odf) conclusion.push(`- ${CAT_TEXTS.odf}`);
+
+    if (diagnostic.notesLibres) conclusion.push(`\nNotes : ${diagnostic.notesLibres}`);
+
+    return conclusion.join('\n');
+  };
+
+  const updateField = (path, value) => {
+    setDiagnostic(prev => {
+      const keys = path.split('.');
+      const newState = { ...prev };
+      let current = newState;
+      for (let i = 0; i < keys.length - 1; i++) {
+        current[keys[i]] = { ...current[keys[i]] };
+        current = current[keys[i]];
+      }
+      current[keys[keys.length - 1]] = value;
+      return newState;
+    });
+  };
+
+  const handleExport = () => {
+    const exportData = {
+      patient: patientInfo,
+      context: contextInfo,
+      diagnostic,
+      chartingStats: stats,
+      conclusion: generateConclusion(),
+      exportDate: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `diagnostic-paro-${patientInfo?.name || 'patient'}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Stats du charting */}
+      {stats && (
+        <div className="bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+          <h2 className="text-xl font-bold mb-4">Resume du Charting Parodontal</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white/20 rounded-xl p-3">
+              <div className="text-3xl font-bold">{stats.totalTeeth}</div>
+              <div className="text-sm opacity-80">Dents presentes</div>
+            </div>
+            <div className="bg-white/20 rounded-xl p-3">
+              <div className={`text-3xl font-bold ${parseFloat(stats.bop) > 30 ? 'text-red-300' : ''}`}>{stats.bop}%</div>
+              <div className="text-sm opacity-80">BOP</div>
+            </div>
+            <div className="bg-white/20 rounded-xl p-3">
+              <div className="text-3xl font-bold text-red-300">{stats.deepPockets}</div>
+              <div className="text-sm opacity-80">Poches &ge;5mm</div>
+            </div>
+            <div className="bg-white/20 rounded-xl p-3">
+              <div className="text-3xl font-bold text-amber-300">{stats.moderatePockets}</div>
+              <div className="text-sm opacity-80">Poches 4mm</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Etat civil */}
+      <CollapsibleSection title="Etat Civil" icon="👤" color="slate" defaultOpen={true}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Adresse par</label>
+            <input
+              type="text"
+              value={diagnostic.adressePar}
+              onChange={(e) => updateField('adressePar', e.target.value)}
+              placeholder="Nom du praticien"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Motif de consultation</label>
+            <input
+              type="text"
+              value={diagnostic.motifConsultation}
+              onChange={(e) => updateField('motifConsultation', e.target.value)}
+              placeholder="Ex: Saignements, mobilite dentaire..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Etat de sante */}
+      <CollapsibleSection title="Etat de Sante" icon="🏥" color="red">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Antecedents generaux</label>
+          <textarea
+            value={diagnostic.antecedentsGeneraux}
+            onChange={(e) => updateField('antecedentsGeneraux', e.target.value)}
+            placeholder="Pathologies, chirurgies, allergies..."
+            rows={2}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-slate-700">Facteurs de risque</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              { key: 'diabete', label: 'Diabete' },
+              { key: 'hta', label: 'HTA' },
+              { key: 'stress', label: 'Stress' },
+              { key: 'tabac', label: 'Tabac' }
+            ].map(item => (
+              <button
+                key={item.key}
+                onClick={() => updateField(`facteursRisque.${item.key}`, !diagnostic.facteursRisque[item.key])}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  diagnostic.facteursRisque[item.key]
+                    ? 'bg-red-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {diagnostic.facteursRisque.tabac && (
+            <div className="mt-2">
+              <label className="block text-sm text-slate-600 mb-1">Quantite tabac</label>
+              <div className="flex gap-2">
+                {['occasionnel', 'modere', 'forte'].map(q => (
+                  <button
+                    key={q}
+                    onClick={() => updateField('facteursRisque.tabacQuantite', q)}
+                    className={`px-3 py-1 rounded text-sm ${
+                      diagnostic.facteursRisque.tabacQuantite === q
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {q === 'occasionnel' ? 'Occasionnel' : q === 'modere' ? 'Modere (<10/j)' : 'Fort (>10/j)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <YesNoToggle
+          label="Antecedents familiaux parodontaux"
+          value={diagnostic.antecedentsFamiliaux}
+          onChange={(v) => updateField('antecedentsFamiliaux', v)}
+        />
+
+        <YesNoToggle
+          label="Traitement medicamenteux en cours"
+          value={diagnostic.traitementMedicamenteux}
+          onChange={(v) => updateField('traitementMedicamenteux', v)}
+        />
+
+        {diagnostic.traitementMedicamenteux && (
+          <input
+            type="text"
+            value={diagnostic.traitementDetails}
+            onChange={(e) => updateField('traitementDetails', e.target.value)}
+            placeholder="Lesquels ?"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+          />
+        )}
+      </CollapsibleSection>
+
+      {/* Examen clinique */}
+      <CollapsibleSection title="Examen Clinique" icon="🔍" color="sky">
+        <MultiSelect
+          label="Type d'examen"
+          options={[
+            { value: 'initial', label: 'Initial' },
+            { value: 'reevaluation', label: 'Reevaluation' }
+          ]}
+          value={diagnostic.typeExamen}
+          onChange={(v) => updateField('typeExamen', v)}
+        />
+
+        <YesNoToggle
+          label="Historique de soins parodontaux"
+          value={diagnostic.historiqueSoinsParo}
+          onChange={(v) => updateField('historiqueSoinsParo', v)}
+        />
+
+        <YesNoToggle
+          label="Hygiene perfectible"
+          value={diagnostic.hygienePerfectible}
+          onChange={(v) => updateField('hygienePerfectible', v)}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Materiel d'hygiene utilise</label>
+            <input
+              type="text"
+              value={diagnostic.materielHygiene}
+              onChange={(e) => updateField('materielHygiene', e.target.value)}
+              placeholder="Brosse a dent, brossettes, fil..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Frequence de brossage</label>
+            <select
+              value={diagnostic.frequenceBrossage}
+              onChange={(e) => updateField('frequenceBrossage', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            >
+              <option value="">Selectionner</option>
+              <option value="1/j">1 fois/jour</option>
+              <option value="2/j">2 fois/jour</option>
+              <option value="3/j">3 fois/jour</option>
+              <option value="irregulier">Irregulier</option>
+            </select>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Signes gingivite */}
+      <CollapsibleSection title="Signes et Symptomes de Gingivite" icon="🦷" color="amber">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {[
+            { key: 'inflammation', label: 'Inflammation' },
+            { key: 'oedeme', label: 'Oedeme' },
+            { key: 'saignements', label: 'Saignements' },
+            { key: 'erytheme', label: 'Erytheme' },
+            { key: 'douleurs', label: 'Douleurs' },
+            { key: 'halitose', label: 'Halitose' }
+          ].map(item => (
+            <YesNoToggle
+              key={item.key}
+              label={item.label}
+              value={diagnostic.signesGingivite[item.key]}
+              onChange={(v) => updateField(`signesGingivite.${item.key}`, v)}
+            />
+          ))}
+        </div>
+
+        <MultiSelect
+          label="Aspect gingival"
+          options={[
+            { value: 'rouge', label: 'Rouge' },
+            { value: 'lisse', label: 'Lisse' },
+            { value: 'piquete', label: 'Piquete (peau d\'orange)' }
+          ]}
+          value={diagnostic.aspectGingival}
+          onChange={(v) => updateField('aspectGingival', v)}
+        />
+      </CollapsibleSection>
+
+      {/* Classification Parodontite */}
+      <CollapsibleSection title="Classification Parodontite (Stade/Grade)" icon="📊" color="purple" defaultOpen={true}>
+        <div className="bg-purple-50 rounded-xl p-4 space-y-4">
+          <h4 className="font-semibold text-purple-800">Criteres de Severite</h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Perte d'attache max (mm)</label>
+              <input
+                type="text"
+                value={diagnostic.perteAttacheMax}
+                onChange={(e) => updateField('perteAttacheMax', e.target.value)}
+                placeholder="Ex: 3-4 mm"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Profondeur de poches max (mm)</label>
+              <input
+                type="number"
+                value={diagnostic.profondeurPochesMax}
+                onChange={(e) => updateField('profondeurPochesMax', parseInt(e.target.value) || 0)}
+                min="0"
+                max="15"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Alveolyse radiographique</label>
+              <select
+                value={diagnostic.alveolyseRadio}
+                onChange={(e) => updateField('alveolyseRadio', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              >
+                <option value="">Selectionner</option>
+                <option value="tiersCoronaire15">Tiers coronaire (&lt;15%)</option>
+                <option value="tiersCoronaire33">Tiers coronaire (15-33%)</option>
+                <option value="tiersMoyen">Tiers moyen (33-66%)</option>
+                <option value="tiersApical">Tiers apical (&gt;66%)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Dents absentes (raisons paro)</label>
+              <input
+                type="number"
+                value={diagnostic.dentsAbsentesParo}
+                onChange={(e) => updateField('dentsAbsentesParo', parseInt(e.target.value) || 0)}
+                min="0"
+                max="32"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-indigo-50 rounded-xl p-4 space-y-4">
+          <h4 className="font-semibold text-indigo-800">Criteres de Complexite</h4>
+
+          <MultiSelect
+            label="Type d'alveolyse"
+            options={[
+              { value: 'horizontale', label: 'Horizontale' },
+              { value: 'verticale', label: 'Verticale >= 3mm' }
+            ]}
+            value={diagnostic.typeAlveolyse}
+            onChange={(v) => updateField('typeAlveolyse', v)}
+          />
+
+          <MultiSelect
+            label="Lesion interradiculaire (LIR)"
+            options={[
+              { value: 'non', label: 'Non' },
+              { value: 'classeI', label: 'Classe I' },
+              { value: 'classeII', label: 'Classe II' },
+              { value: 'classeIII', label: 'Classe III' }
+            ]}
+            value={diagnostic.lesionInterradiculaire}
+            onChange={(v) => updateField('lesionInterradiculaire', v)}
+          />
+
+          <YesNoToggle
+            label="Besoin de rehabilitation complexe"
+            description="Edentement necessitant prothese complexe"
+            value={diagnostic.rehabilitationComplexe}
+            onChange={(v) => updateField('rehabilitationComplexe', v)}
+          />
+        </div>
+
+        <MultiSelect
+          label="Etendue"
+          options={[
+            { value: 'localisee', label: 'Localisee (<30%)' },
+            { value: 'generalisee', label: 'Generalisee (>=30%)' },
+            { value: 'distribution_molaires_incisives', label: 'Distribution molaires/incisives' }
+          ]}
+          value={diagnostic.etendue}
+          onChange={(v) => updateField('etendue', v)}
+        />
+
+        {/* Stade et Grade */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          <div className="bg-white border-2 border-purple-300 rounded-xl p-4">
+            <h4 className="font-bold text-purple-800 mb-3">STADE</h4>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map(s => (
+                <button
+                  key={s}
+                  onClick={() => updateField('stade', s)}
+                  className={`flex-1 py-3 rounded-xl text-xl font-bold transition-all ${
+                    diagnostic.stade === s
+                      ? s <= 2 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                      : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-2 text-center">
+              {diagnostic.stade && STADE_CRITERIA[diagnostic.stade] &&
+                `Poches ${STADE_CRITERIA[diagnostic.stade].poches}`
+              }
+            </p>
+          </div>
+
+          <div className="bg-white border-2 border-indigo-300 rounded-xl p-4">
+            <h4 className="font-bold text-indigo-800 mb-3">GRADE</h4>
+            <div className="flex gap-2">
+              {['A', 'B', 'C'].map(g => (
+                <button
+                  key={g}
+                  onClick={() => updateField('grade', g)}
+                  className={`flex-1 py-3 rounded-xl text-xl font-bold transition-all ${
+                    diagnostic.grade === g
+                      ? g === 'A' ? 'bg-green-500 text-white' :
+                        g === 'B' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
+                      : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-2 text-center">
+              {diagnostic.grade === 'A' && 'Progression lente'}
+              {diagnostic.grade === 'B' && 'Progression moderee'}
+              {diagnostic.grade === 'C' && 'Progression rapide'}
+            </p>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Diagnostic Final */}
+      <CollapsibleSection title="Diagnostic Final" icon="✅" color="green" defaultOpen={true}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[
+            { value: 'sante', label: 'Sante parodontale', color: 'green' },
+            { value: 'gingivite_plaque', label: 'Gingivite induite par la plaque', color: 'amber' },
+            { value: 'gingivite_non_plaque', label: 'Maladie gingivale non liee a la plaque', color: 'orange' },
+            { value: 'parodontite', label: 'Parodontite', color: 'red' }
+          ].map(item => (
+            <button
+              key={item.value}
+              onClick={() => updateField('diagnosticType', item.value)}
+              className={`p-4 rounded-xl text-left font-medium transition-all border-2 ${
+                diagnostic.diagnosticType === item.value
+                  ? item.color === 'green' ? 'bg-green-100 border-green-500 text-green-800' :
+                    item.color === 'amber' ? 'bg-amber-100 border-amber-500 text-amber-800' :
+                    item.color === 'orange' ? 'bg-orange-100 border-orange-500 text-orange-800' :
+                    'bg-red-100 border-red-500 text-red-800'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {diagnostic.diagnosticType === 'parodontite' && diagnostic.stade && diagnostic.grade && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl text-white text-center">
+            <div className="text-sm opacity-80">Diagnostic</div>
+            <div className="text-2xl font-bold">
+              PARODONTITE STADE {diagnostic.stade} GRADE {diagnostic.grade}
+            </div>
+            <div className="text-sm mt-1">
+              {diagnostic.etendue === 'generalisee' ? 'Generalisee' :
+               diagnostic.etendue === 'localisee' ? 'Localisee' : ''}
+            </div>
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* CAT */}
+      <CollapsibleSection title="Conduite a Tenir (CAT)" icon="📋" color="sky" defaultOpen={true}>
+        <div className="space-y-3">
+          {[
+            { key: 'enseignementHygiene', label: "Enseignement a l'hygiene", text: CAT_TEXTS.hygiene },
+            { key: 'detartrage', label: 'Detartrage supra et sous-gingival', text: CAT_TEXTS.detartrage },
+            { key: 'surfacage', label: 'Debridement sous-gingival / Surfacage', text: CAT_TEXTS.surfacage },
+            { key: 'sevrageTabac', label: 'Sevrage tabagique', text: CAT_TEXTS.sevrageTabac },
+            { key: 'suiviParo', label: 'Suivi parodontal', text: CAT_TEXTS.suiviParo },
+            { key: 'chirurgie', label: 'Therapeutique chirurgicale', text: CAT_TEXTS.chirurgie },
+            { key: 'prothese', label: 'Rehabilitation prothetique', text: CAT_TEXTS.prothese },
+            { key: 'odf', label: 'Rehabilitation orthodontique', text: CAT_TEXTS.odf }
+          ].map(item => (
+            <div
+              key={item.key}
+              className={`p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                diagnostic.cat[item.key]
+                  ? 'bg-sky-50 border-sky-300'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+              onClick={() => updateField(`cat.${item.key}`, !diagnostic.cat[item.key])}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center ${
+                  diagnostic.cat[item.key] ? 'bg-sky-500 border-sky-500' : 'border-slate-300'
+                }`}>
+                  {diagnostic.cat[item.key] && (
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`font-medium ${diagnostic.cat[item.key] ? 'text-sky-800' : 'text-slate-700'}`}>
+                  {item.label}
+                </span>
+              </div>
+              {diagnostic.cat[item.key] && (
+                <p className="mt-2 text-sm text-slate-600 pl-9">{item.text}</p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">Notes libres</label>
+          <textarea
+            value={diagnostic.notesLibres}
+            onChange={(e) => updateField('notesLibres', e.target.value)}
+            rows={3}
+            placeholder="Observations complementaires..."
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500"
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Conclusion */}
+      <div className="bg-slate-800 rounded-2xl p-6 text-white">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold">Compte-rendu genere</h3>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(generateConclusion());
+              alert('Copie dans le presse-papier !');
+            }}
+            className="px-4 py-2 bg-white/20 rounded-lg text-sm hover:bg-white/30 transition-all"
+          >
+            Copier
+          </button>
+        </div>
+        <pre className="whitespace-pre-wrap text-sm text-slate-300 font-mono bg-slate-900 rounded-xl p-4 max-h-64 overflow-y-auto">
+          {generateConclusion()}
+        </pre>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={handleExport}
+          className="px-6 py-3 bg-sky-500 text-white rounded-xl font-medium hover:bg-sky-600 transition-all shadow-lg"
+        >
+          Exporter le diagnostic
+        </button>
+      </div>
+    </div>
+  );
+}
