@@ -1438,13 +1438,49 @@ export default function PeriodontalChart() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C9.5 2 7.5 3.5 7 5.5C6.5 4 5 3 3.5 3C2.5 3 2 4 2 5C2 7 4 9 6 10C5.5 12 5 15 6 18C7 21 9 22 10.5 22C11.5 22 12 21 12 21C12 21 12.5 22 13.5 22C15 22 17 21 18 18C19 15 18.5 12 18 10C20 9 22 7 22 5C22 4 21.5 3 20.5 3C19 3 17.5 4 17 5.5C16.5 3.5 14.5 2 12 2Z" />
-                </svg>
-              </div>
+              {/* HelloParo Logo SVG */}
+              <svg width="120" height="50" viewBox="0 0 180 70" className="flex-shrink-0">
+                <defs>
+                  {/* Gradient for probing line */}
+                  <linearGradient id="probingGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#10B981" />
+                    <stop offset="100%" stopColor="#0EA5E9" />
+                  </linearGradient>
+                  {/* Shadow filter */}
+                  <filter id="toothShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.15" />
+                  </filter>
+                </defs>
+
+                {/* Three stylized teeth */}
+                <g filter="url(#toothShadow)">
+                  {/* Left tooth */}
+                  <path d="M30 8 C25 8 22 12 22 18 L22 35 C22 42 25 46 28 46 C30 46 31 44 31 44 C31 44 32 46 34 46 C37 46 40 42 40 35 L40 18 C40 12 37 8 32 8 Z"
+                        fill="white" stroke="#004B63" strokeWidth="2" />
+                  {/* Center tooth (slightly larger) */}
+                  <path d="M55 5 C49 5 45 10 45 17 L45 38 C45 46 49 51 53 51 C55 51 56 49 57 49 C58 49 59 51 61 51 C65 51 69 46 69 38 L69 17 C69 10 65 5 59 5 Z"
+                        fill="white" stroke="#004B63" strokeWidth="2" />
+                  {/* Right tooth */}
+                  <path d="M84 8 C79 8 76 12 76 18 L76 35 C76 42 79 46 82 46 C84 46 85 44 85 44 C85 44 86 46 88 46 C91 46 94 42 94 35 L94 18 C94 12 91 8 86 8 Z"
+                        fill="white" stroke="#004B63" strokeWidth="2" />
+                </g>
+
+                {/* Wavy probing line (smile shape) */}
+                <path d="M18 52 Q31 56 45 54 Q57 52 69 55 Q82 58 98 53"
+                      fill="none" stroke="url(#probingGradient)" strokeWidth="3" strokeLinecap="round" />
+
+                {/* Colored dots on probing line */}
+                <circle cx="25" cy="54" r="2.5" fill="#10B981" />
+                <circle cx="45" cy="53" r="2.5" fill="#22C55E" />
+                <circle cx="57" cy="53.5" r="2.5" fill="#06B6D4" />
+                <circle cx="69" cy="55" r="2.5" fill="#0EA5E9" />
+                <circle cx="88" cy="54" r="2.5" fill="#0EA5E9" />
+
+                {/* Typography */}
+                <text x="115" y="28" fontFamily="Inter, Montserrat, sans-serif" fontSize="16" fontWeight="300" fill="#004B63">Hello</text>
+                <text x="115" y="48" fontFamily="Inter, Montserrat, sans-serif" fontSize="18" fontWeight="700" letterSpacing="3" fill="#004B63">PARO</text>
+              </svg>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">HelloParo</h1>
                 <p className="text-xs text-slate-500">
                   {contextInfo.centreNom || 'Charting Parodontal'} - Examen parodontal complet
                 </p>
