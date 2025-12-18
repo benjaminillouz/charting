@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import DiagnosticParodontal from './DiagnosticParodontal';
 
 // Numérotation FDI internationale
 const TEETH_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -1179,11 +1180,11 @@ export default function PeriodontalChart() {
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Charting Parodontal', margin, 12);
+      pdf.text('HelloParo', margin, 12);
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(contextInfo.centreNom || 'CEMEDIS', margin, 20);
+      pdf.text(contextInfo.centreNom || 'HelloParo', margin, 20);
       pdf.text('Date: ' + patientInfo.date, margin, 27);
 
       yPos = 40;
@@ -1344,7 +1345,7 @@ export default function PeriodontalChart() {
       pdf.setFontSize(7);
       pdf.setTextColor(128, 128, 128);
       const dateStr = new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR');
-      pdf.text('Genere le ' + dateStr + ' - Charting Parodontal CEMEDIS', margin, pageHeight - 8);
+      pdf.text('Genere le ' + dateStr + ' - HelloParo', margin, pageHeight - 8);
 
       // Générer blob URL pour l'affichage
       const pdfBlob = pdf.output('blob');
@@ -1440,9 +1441,9 @@ export default function PeriodontalChart() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">Charting Parodontal</h1>
+                <h1 className="text-xl font-bold text-slate-800">HelloParo</h1>
                 <p className="text-xs text-slate-500">
-                  {contextInfo.centreNom || 'CEMEDIS'} - Examen parodontal complet
+                  {contextInfo.centreNom || 'Charting Parodontal'} - Examen parodontal complet
                 </p>
               </div>
             </div>
@@ -1607,12 +1608,22 @@ export default function PeriodontalChart() {
           <button
             onClick={() => setActiveView('data')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeView === 'data' 
-                ? 'bg-sky-500 text-white shadow-md' 
+              activeView === 'data'
+                ? 'bg-sky-500 text-white shadow-md'
                 : 'bg-white text-slate-600 hover:bg-slate-100'
             }`}
           >
             Vue tableau
+          </button>
+          <button
+            onClick={() => setActiveView('diagnostic')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'diagnostic'
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Diagnostic
           </button>
         </div>
         
@@ -1803,7 +1814,7 @@ export default function PeriodontalChart() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeView === 'data' ? (
           /* Vue tableau */
           <div className="space-y-6">
             {/* Arcade supérieure */}
@@ -1846,8 +1857,17 @@ export default function PeriodontalChart() {
               />
             </div>
           </div>
+        ) : (
+          /* Vue diagnostic */
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+            <DiagnosticParodontal
+              stats={stats}
+              patientInfo={patientInfo}
+              contextInfo={contextInfo}
+            />
+          </div>
         )}
-        
+
         {/* Légende */}
         <div className="mt-6 bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">Légende</h3>
@@ -1964,7 +1984,7 @@ export default function PeriodontalChart() {
       {/* Footer */}
       <footer className="mt-8 py-6 bg-slate-800 text-center">
         <p className="text-slate-400 text-sm">
-          Charting Parodontal CEMEDIS © {new Date().getFullYear()}
+          HelloParo © {new Date().getFullYear()}
         </p>
       </footer>
     </div>
