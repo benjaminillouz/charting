@@ -387,7 +387,7 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(0, 0, 0);
-        pdf.text('Dents: ' + stats.totalTeeth + '  |  BOP: ' + stats.bop + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
+        pdf.text('Dents: ' + stats.totalTeeth + '  |  Indice de saignement: ' + stats.bop + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
 
         yPos += 25;
       }
@@ -573,7 +573,7 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
             </div>
             <div className="bg-white/20 rounded-xl p-3">
               <div className={`text-3xl font-bold ${parseFloat(stats.bop) > 30 ? 'text-red-300' : ''}`}>{stats.bop}%</div>
-              <div className="text-sm opacity-80">BOP</div>
+              <div className="text-sm opacity-80">Indice de saignement</div>
             </div>
             <div className="bg-white/20 rounded-xl p-3">
               <div className="text-3xl font-bold text-red-300">{stats.deepPockets}</div>

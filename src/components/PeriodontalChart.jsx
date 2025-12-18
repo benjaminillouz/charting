@@ -868,7 +868,7 @@ const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper }) => {
           
           {/* Saignement */}
           <tr>
-            <td className="px-2 py-1 font-medium text-red-600 sticky left-0 bg-white">BOP</td>
+            <td className="px-2 py-1 font-medium text-red-600 sticky left-0 bg-white">Saign.</td>
             {teeth.map(tooth => {
               const data = teethData[tooth][surface];
               return (
@@ -1223,7 +1223,7 @@ export default function PeriodontalChart() {
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(0, 0, 0);
-      pdf.text('Dents: ' + stats.totalTeeth + '  |  Sites: ' + stats.totalSites + '  |  BOP: ' + stats.bop + '%  |  Plaque: ' + stats.plaqueIndex + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
+      pdf.text('Dents: ' + stats.totalTeeth + '  |  Sites: ' + stats.totalSites + '  |  Indice de saignement: ' + stats.bop + '%  |  Plaque: ' + stats.plaqueIndex + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
 
       yPos += 25;
 
@@ -1569,7 +1569,7 @@ export default function PeriodontalChart() {
               <span className="font-bold text-slate-800">{stats.totalSites}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">BOP:</span>
+              <span className="text-sm text-slate-500">Indice de saignement:</span>
               <span className={`font-bold ${stats.bop > 30 ? 'text-red-600' : stats.bop > 10 ? 'text-amber-600' : 'text-green-600'}`}>
                 {stats.bop}%
               </span>
@@ -1792,7 +1792,7 @@ export default function PeriodontalChart() {
                             values={teethData[selectedTooth][surface].bleeding}
                             onChange={(vals) => updateToothData(selectedTooth, surface, 'bleeding', vals)}
                             color="bleeding"
-                            label="BOP"
+                            label="Saign."
                           />
                           <BooleanIndicators
                             values={teethData[selectedTooth][surface].plaque}
