@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="toothGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fefefe" />
+      <stop offset="30%" stop-color="#f8f9fa" />
+      <stop offset="100%" stop-color="#e9ecef" />
+    </linearGradient>
+    <linearGradient id="rootGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff5e6" />
+      <stop offset="100%" stop-color="#ffe4c4" />
+    </linearGradient>
+  </defs>
+  <!-- Racines -->
+  <path d="M35 55 Q30 70 28 85 Q27 95 38 98 Q42 92 43 85 Q44 70 40 55" fill="url(#rootGrad)" stroke="#d4a574" stroke-width="1.5"/>
+  <path d="M60 55 Q65 70 67 85 Q68 95 57 98 Q53 92 52 85 Q51 70 55 55" fill="url(#rootGrad)" stroke="#d4a574" stroke-width="1.5"/>
+  <!-- Couronne -->
+  <path d="M15 15 Q15 5 50 5 Q85 5 85 15 L85 45 Q85 58 70 60 L50 62 L30 60 Q15 58 15 45 Z" fill="url(#toothGrad)" stroke="#004B63" stroke-width="2"/>
+  <!-- Détails -->
+  <ellipse cx="50" cy="30" rx="15" ry="10" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+  <line x1="35" y1="20" x2="35" y2="40" stroke="#cbd5e1" stroke-width="1"/>
+  <line x1="65" y1="20" x2="65" y2="40" stroke="#cbd5e1" stroke-width="1"/>
+</svg>
