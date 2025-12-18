@@ -1410,7 +1410,7 @@ export default function PeriodontalChart() {
         exportDate: new Date().toISOString()
       };
 
-      const response = await fetch('https://n8n.cemedis.app/webhook-test/fc0611a7-63ed-44db-b4e9-d9401957d18a', {
+      const response = await fetch('https://n8n.cemedis.app/webhook/fc0611a7-63ed-44db-b4e9-d9401957d18a', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
