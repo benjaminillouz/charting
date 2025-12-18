@@ -1300,135 +1300,138 @@ export default function PeriodontalChart() {
         </div>
         
         {activeView === 'chart' ? (
-          <div className="space-y-6">
-            {/* Arcade supérieure */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Maxillaire</h2>
-              
-              {/* Graphique Vestibulaire */}
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-slate-600 mb-2">Vestibulaire</h3>
-                <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="buccal" />
-              </div>
-              
-              {/* Dents */}
-              <div className="flex justify-center gap-1 my-4 overflow-x-auto pb-2">
-                {TEETH_UPPER.map(tooth => (
-                  <div key={tooth} className="flex flex-col items-center">
-                    <ToothSVG
-                      toothNumber={tooth}
-                      isUpper={true}
-                      data={teethData[tooth]}
-                      isSelected={selectedTooth === tooth}
-                      onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
-                    />
-                    <span className={`text-xs font-medium mt-1 ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-700'}`}>
-                      {tooth}
-                    </span>
-                    {teethData[tooth].mobility > 0 && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded">
-                        M{teethData[tooth].mobility}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Graphique Palatin */}
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-slate-600 mb-2">Palatin</h3>
-                <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="lingual" />
-              </div>
-            </div>
-            
-            {/* Arcade inférieure */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Mandibulaire</h2>
-              
-              {/* Graphique Lingual */}
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-slate-600 mb-2">Lingual</h3>
-                <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="lingual" />
-              </div>
-              
-              {/* Dents */}
-              <div className="flex justify-center gap-1 my-4 overflow-x-auto pb-2">
-                {TEETH_LOWER.map(tooth => (
-                  <div key={tooth} className="flex flex-col items-center">
-                    <ToothSVG
-                      toothNumber={tooth}
-                      isUpper={false}
-                      data={teethData[tooth]}
-                      isSelected={selectedTooth === tooth}
-                      onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
-                    />
-                    <span className={`text-xs font-medium mt-1 ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-700'}`}>
-                      {tooth}
-                    </span>
-                    {teethData[tooth].mobility > 0 && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded">
-                        M{teethData[tooth].mobility}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Graphique Vestibulaire */}
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-slate-600 mb-2">Vestibulaire</h3>
-                <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="buccal" />
-              </div>
-            </div>
-            
-            {/* Panneau de détail de la dent sélectionnée */}
-            {selectedTooth && (
+          <div className="flex gap-6">
+            {/* Zone principale - Arcades dentaires */}
+            <div className={`space-y-6 ${selectedTooth ? 'flex-1' : 'w-full'}`}>
+              {/* Arcade supérieure */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-800">
-                    Dent {selectedTooth}
-                  </h2>
-                  <button
-                    onClick={() => setSelectedTooth(null)}
-                    className="text-slate-400 hover:text-slate-600"
-                  >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Maxillaire</h2>
+
+                {/* Graphique Vestibulaire */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-slate-600 mb-2">Vestibulaire</h3>
+                  <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="buccal" />
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                {/* Dents */}
+                <div className="flex justify-center gap-1 my-4 overflow-x-auto pb-2">
+                  {TEETH_UPPER.map(tooth => (
+                    <div key={tooth} className="flex flex-col items-center">
+                      <ToothSVG
+                        toothNumber={tooth}
+                        isUpper={true}
+                        data={teethData[tooth]}
+                        isSelected={selectedTooth === tooth}
+                        onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+                      />
+                      <span className={`text-xs font-medium mt-1 ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-700'}`}>
+                        {tooth}
+                      </span>
+                      {teethData[tooth].mobility > 0 && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded">
+                          M{teethData[tooth].mobility}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Graphique Palatin */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-slate-600 mb-2">Palatin</h3>
+                  <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="lingual" />
+                </div>
+              </div>
+
+              {/* Arcade inférieure */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+                <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Mandibulaire</h2>
+
+                {/* Graphique Lingual */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-slate-600 mb-2">Lingual</h3>
+                  <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="lingual" />
+                </div>
+
+                {/* Dents */}
+                <div className="flex justify-center gap-1 my-4 overflow-x-auto pb-2">
+                  {TEETH_LOWER.map(tooth => (
+                    <div key={tooth} className="flex flex-col items-center">
+                      <ToothSVG
+                        toothNumber={tooth}
+                        isUpper={false}
+                        data={teethData[tooth]}
+                        isSelected={selectedTooth === tooth}
+                        onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+                      />
+                      <span className={`text-xs font-medium mt-1 ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-700'}`}>
+                        {tooth}
+                      </span>
+                      {teethData[tooth].mobility > 0 && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded">
+                          M{teethData[tooth].mobility}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Graphique Vestibulaire */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-slate-600 mb-2">Vestibulaire</h3>
+                  <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="buccal" />
+                </div>
+              </div>
+            </div>
+
+            {/* Panneau latéral - Détail de la dent sélectionnée */}
+            {selectedTooth && (
+              <div className="w-80 flex-shrink-0">
+                <div className="bg-white rounded-2xl shadow-lg p-5 border border-slate-200 sticky top-24">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800">
+                      Dent {selectedTooth}
+                    </h2>
+                    <button
+                      onClick={() => setSelectedTooth(null)}
+                      className="text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
                   {/* Contrôles de statut */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
+                  <div className="space-y-4 mb-4">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => toggleMissing(selectedTooth)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          teethData[selectedTooth].missing 
-                            ? 'bg-red-500 text-white' 
+                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                          teethData[selectedTooth].missing
+                            ? 'bg-red-500 text-white'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
-                        Dent absente
+                        Absente
                       </button>
                       <button
                         onClick={() => toggleImplant(selectedTooth)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          teethData[selectedTooth].implant 
-                            ? 'bg-indigo-500 text-white' 
+                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                          teethData[selectedTooth].implant
+                            ? 'bg-indigo-500 text-white'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
                         Implant
                       </button>
                     </div>
-                    
-                    <MobilitySelector 
+
+                    <MobilitySelector
                       value={teethData[selectedTooth].mobility}
                       onChange={(val) => updateMobility(selectedTooth, val)}
                     />
-                    
+
                     {FURCATION_TEETH.includes(selectedTooth) && (
                       <FurcationSelector
                         value={teethData[selectedTooth].furcation}
@@ -1437,15 +1440,15 @@ export default function PeriodontalChart() {
                       />
                     )}
                   </div>
-                  
+
                   {/* Sondage détaillé */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {['buccal', 'lingual'].map(surface => (
-                      <div key={surface} className="p-4 bg-slate-50 rounded-xl">
-                        <h4 className="text-sm font-semibold text-slate-700 mb-3 capitalize">
+                      <div key={surface} className="p-3 bg-slate-50 rounded-xl">
+                        <h4 className="text-xs font-semibold text-slate-700 mb-2">
                           {surface === 'buccal' ? 'Vestibulaire' : TEETH_UPPER.includes(selectedTooth) ? 'Palatin' : 'Lingual'}
                         </h4>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <ProbingInput
                             values={teethData[selectedTooth][surface].probing}
                             onChange={(vals) => updateToothData(selectedTooth, surface, 'probing', vals)}
