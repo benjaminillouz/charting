@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
 
 // Textes prédéfinis pour la CAT
 const CAT_TEXTS = {
@@ -155,7 +156,8 @@ const MultiSelect = ({ options, value, onChange, label }) => (
 );
 
 // Composant principal de diagnostic
-export default function DiagnosticParodontal({ stats, patientInfo, contextInfo }) {
+export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, onPdfGenerated }) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [diagnostic, setDiagnostic] = useState({
     adressePar: '',
     motifConsultation: '',
@@ -308,23 +310,242 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo }
     });
   };
 
-  const handleExport = () => {
-    const exportData = {
-      patient: patientInfo,
-      context: contextInfo,
-      diagnostic,
-      chartingStats: stats,
-      conclusion: generateConclusion(),
-      exportDate: new Date().toISOString()
-    };
+  const handleGeneratePdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = 0;
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `diagnostic-paro-${patientInfo?.name || 'patient'}-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      // En-tête avec fond coloré
+      pdf.setFillColor(147, 51, 234); // Purple
+      pdf.rect(0, 0, pageWidth, 32, 'F');
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('HelloParo - Diagnostic Parodontal', margin, 12);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(contextInfo?.centreNom || 'HelloParo', margin, 20);
+      pdf.text('Date: ' + (patientInfo?.date || new Date().toLocaleDateString('fr-FR')), margin, 27);
+
+      yPos = 40;
+
+      // Informations patient
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 25, 'F');
+      pdf.setDrawColor(226, 232, 240);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 25, 'S');
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Informations Patient', margin + 5, yPos + 7);
+
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      const patientFullName = ((patientInfo?.firstName || '') + ' ' + (patientInfo?.name || '')).trim() || 'Non renseigne';
+      pdf.text('Patient: ' + patientFullName, margin + 5, yPos + 15);
+      pdf.text('ID: ' + (patientInfo?.id || 'N/A'), margin + 5, yPos + 21);
+      if (diagnostic.adressePar) {
+        pdf.text('Adresse par: ' + diagnostic.adressePar, margin + 80, yPos + 15);
+      }
+      if (diagnostic.motifConsultation) {
+        pdf.text('Motif: ' + diagnostic.motifConsultation, margin + 80, yPos + 21);
+      }
+
+      yPos += 32;
+
+      // Statistiques du charting
+      if (stats) {
+        pdf.setFillColor(240, 253, 244);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 18, 'F');
+        pdf.setDrawColor(187, 247, 208);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 18, 'S');
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(22, 101, 52);
+        pdf.text('Resume du Charting', margin + 5, yPos + 6);
+
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Dents: ' + stats.totalTeeth + '  |  BOP: ' + stats.bop + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
+
+        yPos += 25;
+      }
+
+      // Facteurs de risque
+      const activeRisks = [];
+      if (diagnostic.facteursRisque.diabete) activeRisks.push('Diabete');
+      if (diagnostic.facteursRisque.hta) activeRisks.push('HTA');
+      if (diagnostic.facteursRisque.stress) activeRisks.push('Stress');
+      if (diagnostic.facteursRisque.tabac) activeRisks.push('Tabac' + (diagnostic.facteursRisque.tabacQuantite ? ' (' + diagnostic.facteursRisque.tabacQuantite + ')' : ''));
+
+      if (activeRisks.length > 0 || diagnostic.antecedentsGeneraux) {
+        pdf.setFillColor(254, 242, 242);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 18, 'F');
+        pdf.setDrawColor(254, 202, 202);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 18, 'S');
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(153, 27, 27);
+        pdf.text('Etat de Sante', margin + 5, yPos + 6);
+
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        if (activeRisks.length > 0) {
+          pdf.text('Facteurs de risque: ' + activeRisks.join(', '), margin + 5, yPos + 13);
+        }
+
+        yPos += 25;
+      }
+
+      // Signes cliniques
+      const signesActifs = [];
+      if (diagnostic.signesGingivite.inflammation) signesActifs.push('Inflammation');
+      if (diagnostic.signesGingivite.saignements) signesActifs.push('Saignements');
+      if (diagnostic.signesGingivite.oedeme) signesActifs.push('Oedeme');
+      if (diagnostic.signesGingivite.halitose) signesActifs.push('Halitose');
+      if (diagnostic.signesGingivite.douleurs) signesActifs.push('Douleurs');
+
+      if (signesActifs.length > 0) {
+        pdf.setFillColor(254, 252, 232);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 12, 'F');
+        pdf.setDrawColor(254, 240, 138);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 12, 'S');
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Signes cliniques: ' + signesActifs.join(', '), margin + 5, yPos + 7);
+
+        yPos += 18;
+      }
+
+      // Diagnostic principal
+      if (diagnostic.diagnosticType) {
+        pdf.setFillColor(233, 213, 255);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 22, 'F');
+        pdf.setDrawColor(192, 132, 252);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 22, 'S');
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(88, 28, 135);
+        pdf.text('DIAGNOSTIC', margin + 5, yPos + 8);
+
+        pdf.setFontSize(11);
+        let diagText = '';
+        if (diagnostic.diagnosticType === 'parodontite' && diagnostic.stade && diagnostic.grade) {
+          diagText = 'PARODONTITE STADE ' + diagnostic.stade + ' GRADE ' + diagnostic.grade;
+          if (diagnostic.etendue) {
+            diagText += ' - ' + (diagnostic.etendue === 'generalisee' ? 'Generalisee' : diagnostic.etendue === 'localisee' ? 'Localisee' : 'Distribution molaires/incisives');
+          }
+        } else if (diagnostic.diagnosticType === 'gingivite_plaque') {
+          diagText = 'Gingivite induite par la plaque';
+        } else if (diagnostic.diagnosticType === 'gingivite_non_plaque') {
+          diagText = 'Maladie gingivale non liee a la plaque';
+        } else if (diagnostic.diagnosticType === 'sante') {
+          diagText = 'Sante parodontale';
+        }
+        pdf.text(diagText, margin + 5, yPos + 17);
+
+        yPos += 28;
+      }
+
+      // Conduite à tenir
+      const catItems = [];
+      if (diagnostic.cat.enseignementHygiene) catItems.push('Enseignement hygiene');
+      if (diagnostic.cat.detartrage) catItems.push('Detartrage');
+      if (diagnostic.cat.surfacage) catItems.push('Surfacage');
+      if (diagnostic.cat.sevrageTabac) catItems.push('Sevrage tabagique');
+      if (diagnostic.cat.suiviParo) catItems.push('Suivi parodontal');
+      if (diagnostic.cat.chirurgie) catItems.push('Chirurgie');
+      if (diagnostic.cat.prothese) catItems.push('Prothese');
+      if (diagnostic.cat.odf) catItems.push('ODF');
+
+      if (catItems.length > 0) {
+        pdf.setFillColor(224, 242, 254);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 8 + catItems.length * 5, 'F');
+        pdf.setDrawColor(125, 211, 252);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 8 + catItems.length * 5, 'S');
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(3, 105, 161);
+        pdf.text('Conduite a Tenir', margin + 5, yPos + 6);
+
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        catItems.forEach((item, idx) => {
+          pdf.text('- ' + item, margin + 8, yPos + 12 + idx * 5);
+        });
+
+        yPos += 15 + catItems.length * 5;
+      }
+
+      // Notes libres
+      if (diagnostic.notesLibres) {
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(100, 100, 100);
+        const splitNotes = pdf.splitTextToSize('Notes: ' + diagnostic.notesLibres, pageWidth - 2 * margin - 10);
+        pdf.text(splitNotes, margin + 5, yPos + 5);
+        yPos += splitNotes.length * 5 + 10;
+      }
+
+      // Compte-rendu complet
+      if (yPos < pageHeight - 60) {
+        const conclusion = generateConclusion();
+        pdf.setFillColor(241, 245, 249);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 50, 'F');
+        pdf.setDrawColor(203, 213, 225);
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 50, 'S');
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(51, 65, 85);
+        pdf.text('Compte-rendu', margin + 5, yPos + 6);
+
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        const splitConclusion = pdf.splitTextToSize(conclusion, pageWidth - 2 * margin - 10);
+        pdf.text(splitConclusion.slice(0, 10), margin + 5, yPos + 12);
+      }
+
+      // Pied de page
+      pdf.setFontSize(7);
+      pdf.setTextColor(128, 128, 128);
+      const dateStr = new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR');
+      pdf.text('Genere le ' + dateStr + ' - HelloParo', margin, pageHeight - 8);
+
+      // Générer blob URL pour l'affichage
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      // Générer base64 pour l'envoi
+      const base64Data = pdf.output('datauristring').split(',')[1];
+
+      // Appeler le callback du parent pour afficher le modal
+      if (onPdfGenerated) {
+        onPdfGenerated(blobUrl, base64Data);
+      }
+    } catch (error) {
+      console.error('Erreur PDF:', error);
+      alert('Erreur lors de la generation du PDF: ' + error.message);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -814,10 +1035,26 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo }
       {/* Actions */}
       <div className="flex gap-3 justify-end">
         <button
-          onClick={handleExport}
-          className="px-6 py-3 bg-sky-500 text-white rounded-xl font-medium hover:bg-sky-600 transition-all shadow-lg"
+          onClick={handleGeneratePdf}
+          disabled={isGeneratingPdf}
+          className="px-6 py-3 bg-purple-500 text-white rounded-xl font-medium hover:bg-purple-600 transition-all shadow-lg disabled:opacity-50 flex items-center gap-2"
         >
-          Exporter le diagnostic
+          {isGeneratingPdf ? (
+            <>
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Generation...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              Exporter PDF
+            </>
+          )}
         </button>
       </div>
     </div>

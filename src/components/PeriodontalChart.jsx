@@ -1864,6 +1864,11 @@ export default function PeriodontalChart() {
               stats={stats}
               patientInfo={patientInfo}
               contextInfo={contextInfo}
+              onPdfGenerated={(blobUrl, base64) => {
+                setPdfDataUrl(blobUrl);
+                setPdfBase64(base64);
+                setShowPdfModal(true);
+              }}
             />
           </div>
         )}
