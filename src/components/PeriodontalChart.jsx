@@ -954,11 +954,57 @@ export default function PeriodontalChart() {
   const [teethData, setTeethData] = useState(initializeTeethData());
   const [selectedTooth, setSelectedTooth] = useState(null);
   const [patientInfo, setPatientInfo] = useState({
+    id: '',
     name: '',
+    firstName: '',
     date: new Date().toISOString().split('T')[0],
     examiner: ''
   });
+  const [contextInfo, setContextInfo] = useState({
+    praticienId: '',
+    praticienNom: '',
+    centreId: '',
+    centreNom: ''
+  });
   const [activeView, setActiveView] = useState('chart'); // 'chart' or 'data'
+
+  // Lecture des paramètres URL au chargement
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    // Paramètres du praticien
+    const praticienId = params.get('ID_praticien') || '';
+    const praticienNom = params.get('Praticien_nom') || '';
+
+    // Paramètres du centre
+    const centreId = params.get('ID_centre') || '';
+    const centreNom = params.get('Centre_nom') || '';
+
+    // Paramètres du patient
+    const patientId = params.get('Patient_id') || '';
+    const patientNom = params.get('Patient_nom') || '';
+    const patientPrenom = params.get('Patient_prenom') || '';
+
+    // Mise à jour des états
+    if (praticienId || praticienNom || centreId || centreNom) {
+      setContextInfo({
+        praticienId,
+        praticienNom: decodeURIComponent(praticienNom).trim(),
+        centreId,
+        centreNom: decodeURIComponent(centreNom).trim()
+      });
+    }
+
+    if (patientId || patientNom || patientPrenom) {
+      setPatientInfo(prev => ({
+        ...prev,
+        id: patientId,
+        name: decodeURIComponent(patientNom).trim(),
+        firstName: decodeURIComponent(patientPrenom).trim(),
+        examiner: praticienNom ? decodeURIComponent(praticienNom).trim() : prev.examiner
+      }));
+    }
+  }, []);
   
   // Calcul des statistiques
   const calculateStats = useCallback(() => {
@@ -1064,6 +1110,7 @@ export default function PeriodontalChart() {
   const exportData = () => {
     const data = {
       patient: patientInfo,
+      context: contextInfo,
       teeth: teethData,
       stats,
       exportDate: new Date().toISOString()
@@ -1072,7 +1119,10 @@ export default function PeriodontalChart() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `perio-chart-${patientInfo.name || 'patient'}-${patientInfo.date}.json`;
+    const patientName = patientInfo.name
+      ? `${patientInfo.name}${patientInfo.firstName ? '-' + patientInfo.firstName : ''}`
+      : 'patient';
+    a.download = `perio-chart-${patientName}-${patientInfo.date}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1086,7 +1136,8 @@ export default function PeriodontalChart() {
         try {
           const data = JSON.parse(e.target.result);
           if (data.teeth) setTeethData(data.teeth);
-          if (data.patient) setPatientInfo(data.patient);
+          if (data.patient) setPatientInfo(prev => ({ ...prev, ...data.patient }));
+          if (data.context) setContextInfo(prev => ({ ...prev, ...data.context }));
         } catch (err) {
           alert('Erreur lors de l\'import du fichier');
         }
@@ -1117,10 +1168,22 @@ export default function PeriodontalChart() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-800">Charting Parodontal</h1>
-                <p className="text-xs text-slate-500">CEMEDIS - Examen parodontal complet</p>
+                <p className="text-xs text-slate-500">
+                  {contextInfo.centreNom || 'CEMEDIS'} - Examen parodontal complet
+                </p>
               </div>
             </div>
-            
+
+            {/* Praticien Info */}
+            {contextInfo.praticienNom && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-sky-50 rounded-lg border border-sky-200">
+                <svg className="w-4 h-4 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="text-sm font-medium text-sky-800">{contextInfo.praticienNom}</span>
+              </div>
+            )}
+
             {/* Patient Info */}
             <div className="flex items-center gap-3 flex-wrap">
               <input
@@ -1128,7 +1191,14 @@ export default function PeriodontalChart() {
                 placeholder="Nom du patient"
                 value={patientInfo.name}
                 onChange={(e) => setPatientInfo({ ...patientInfo, name: e.target.value })}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent w-36"
+              />
+              <input
+                type="text"
+                placeholder="Prénom"
+                value={patientInfo.firstName}
+                onChange={(e) => setPatientInfo({ ...patientInfo, firstName: e.target.value })}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent w-32"
               />
               <input
                 type="date"
@@ -1141,7 +1211,7 @@ export default function PeriodontalChart() {
                 placeholder="Examinateur"
                 value={patientInfo.examiner}
                 onChange={(e) => setPatientInfo({ ...patientInfo, examiner: e.target.value })}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent w-44"
               />
             </div>
             
