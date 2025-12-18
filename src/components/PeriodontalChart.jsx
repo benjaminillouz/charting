@@ -1,4 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // Numérotation FDI internationale
 const TEETH_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -967,6 +969,12 @@ export default function PeriodontalChart() {
     centreNom: ''
   });
   const [activeView, setActiveView] = useState('chart'); // 'chart' or 'data'
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfDataUrl, setPdfDataUrl] = useState(null);
+  const [pdfBase64, setPdfBase64] = useState(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isSendingToVeasy, setIsSendingToVeasy] = useState(false);
+  const chartRef = useRef(null);
 
   // Lecture des paramètres URL au chargement
   useEffect(() => {
@@ -1154,6 +1162,167 @@ export default function PeriodontalChart() {
     }
   };
 
+  // Génération du PDF
+  const generatePdf = async () => {
+    setIsGeneratingPdf(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+
+      // En-tête
+      pdf.setFillColor(14, 165, 233); // sky-500
+      pdf.rect(0, 0, pageWidth, 35, 'F');
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Charting Parodontal', margin, 15);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(contextInfo.centreNom || 'CEMEDIS', margin, 23);
+      pdf.text(`Date: ${patientInfo.date}`, margin, 30);
+
+      // Informations patient
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Informations Patient', margin, 45);
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const patientFullName = `${patientInfo.firstName} ${patientInfo.name}`.trim() || 'Non renseigné';
+      pdf.text(`Patient: ${patientFullName}`, margin, 53);
+      pdf.text(`ID Patient: ${patientInfo.id || 'N/A'}`, margin, 60);
+      pdf.text(`Examinateur: ${patientInfo.examiner || 'Non renseigné'}`, margin + 80, 53);
+      if (contextInfo.praticienNom) {
+        pdf.text(`Praticien: ${contextInfo.praticienNom}`, margin + 80, 60);
+      }
+
+      // Statistiques
+      pdf.setFillColor(241, 245, 249); // slate-100
+      pdf.rect(margin, 68, pageWidth - 2 * margin, 25, 'F');
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Statistiques', margin + 5, 78);
+
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      const statsY = 86;
+      pdf.text(`Dents présentes: ${stats.totalTeeth}`, margin + 5, statsY);
+      pdf.text(`Sites: ${stats.totalSites}`, margin + 45, statsY);
+      pdf.text(`BOP: ${stats.bop}%`, margin + 75, statsY);
+      pdf.text(`Plaque: ${stats.plaqueIndex}%`, margin + 105, statsY);
+      pdf.text(`Poches ≥5mm: ${stats.deepPockets}`, margin + 140, statsY);
+
+      // Capture du graphique
+      if (chartRef.current) {
+        const canvas = await html2canvas(chartRef.current, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pageWidth - 2 * margin;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        // Si l'image est trop grande, on la redimensionne
+        const maxImgHeight = pageHeight - 110;
+        const finalImgHeight = Math.min(imgHeight, maxImgHeight);
+        const finalImgWidth = (finalImgHeight * canvas.width) / canvas.height;
+
+        pdf.addImage(imgData, 'PNG', margin, 100, Math.min(imgWidth, finalImgWidth), finalImgHeight);
+      }
+
+      // Pied de page
+      pdf.setFontSize(8);
+      pdf.setTextColor(128, 128, 128);
+      pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, margin, pageHeight - 10);
+      pdf.text('Charting Parodontal CEMEDIS', pageWidth - margin - 50, pageHeight - 10);
+
+      // Convertir en base64 et data URL
+      const pdfOutput = pdf.output('datauristring');
+      const base64 = pdf.output('datauristring').split(',')[1];
+
+      setPdfDataUrl(pdfOutput);
+      setPdfBase64(base64);
+      setShowPdfModal(true);
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // Télécharger le PDF
+  const downloadPdf = () => {
+    if (pdfDataUrl) {
+      const link = document.createElement('a');
+      link.href = pdfDataUrl;
+      const patientName = patientInfo.name
+        ? `${patientInfo.name}${patientInfo.firstName ? '-' + patientInfo.firstName : ''}`
+        : 'patient';
+      link.download = `charting-parodontal-${patientName}-${patientInfo.date}.pdf`;
+      link.click();
+    }
+  };
+
+  // Imprimer le PDF
+  const printPdf = () => {
+    if (pdfDataUrl) {
+      const printWindow = window.open(pdfDataUrl);
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+    }
+  };
+
+  // Envoyer à Veasy
+  const sendToVeasy = async () => {
+    if (!pdfBase64) {
+      await generatePdf();
+    }
+
+    setIsSendingToVeasy(true);
+    try {
+      const payload = {
+        patient: patientInfo,
+        context: contextInfo,
+        teeth: teethData,
+        stats,
+        pdf_base64: pdfBase64,
+        exportDate: new Date().toISOString()
+      };
+
+      const response = await fetch('https://n8n.cemedis.app/webhook-test/fc0611a7-63ed-44db-b4e9-d9401957d18a', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        alert('Données envoyées avec succès à Veasy !');
+      } else {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi à Veasy:', error);
+      alert('Erreur lors de l\'envoi à Veasy: ' + error.message);
+    } finally {
+      setIsSendingToVeasy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50">
       {/* Header */}
@@ -1216,20 +1385,64 @@ export default function PeriodontalChart() {
             </div>
             
             {/* Actions */}
-            <div className="flex items-center gap-2">
-              <label className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 cursor-pointer transition-colors">
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 cursor-pointer transition-colors">
                 Importer
                 <input type="file" accept=".json" onChange={importData} className="hidden" />
               </label>
               <button
                 onClick={exportData}
-                className="px-4 py-2 bg-sky-500 text-white rounded-lg text-sm font-medium hover:bg-sky-600 transition-colors shadow-md"
+                className="px-3 py-2 bg-sky-500 text-white rounded-lg text-sm font-medium hover:bg-sky-600 transition-colors shadow-md"
               >
                 Exporter
               </button>
               <button
+                onClick={generatePdf}
+                disabled={isGeneratingPdf}
+                className="px-3 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    PDF
+                  </>
+                )}
+              </button>
+              <button
+                onClick={sendToVeasy}
+                disabled={isSendingToVeasy}
+                className="px-3 py-2 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {isSendingToVeasy ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Envoi...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Import Veasy
+                  </>
+                )}
+              </button>
+              <button
                 onClick={resetChart}
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
               >
                 Réinitialiser
               </button>
@@ -1302,7 +1515,7 @@ export default function PeriodontalChart() {
         {activeView === 'chart' ? (
           <div className="flex gap-6">
             {/* Zone principale - Arcades dentaires */}
-            <div className={`space-y-6 ${selectedTooth ? 'flex-1' : 'w-full'}`}>
+            <div ref={chartRef} className={`space-y-6 ${selectedTooth ? 'flex-1' : 'w-full'}`}>
               {/* Arcade supérieure */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
                 <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Maxillaire</h2>
@@ -1570,7 +1783,80 @@ export default function PeriodontalChart() {
           </div>
         </div>
       </div>
-      
+
+      {/* Modal PDF Viewer */}
+      {showPdfModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            {/* Header de la modal */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800">Aperçu du PDF</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={downloadPdf}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Télécharger
+                </button>
+                <button
+                  onClick={printPdf}
+                  className="px-4 py-2 bg-sky-500 text-white rounded-lg text-sm font-medium hover:bg-sky-600 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Imprimer
+                </button>
+                <button
+                  onClick={sendToVeasy}
+                  disabled={isSendingToVeasy}
+                  className="px-4 py-2 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSendingToVeasy ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Envoi...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Import Veasy
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowPdfModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu - PDF Viewer */}
+            <div className="flex-1 overflow-auto p-4 bg-slate-100">
+              {pdfDataUrl && (
+                <iframe
+                  src={pdfDataUrl}
+                  className="w-full h-full min-h-[70vh] rounded-lg border border-slate-300"
+                  title="Aperçu PDF"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="mt-8 py-6 bg-slate-800 text-center">
         <p className="text-slate-400 text-sm">
