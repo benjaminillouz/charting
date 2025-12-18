@@ -1023,11 +1023,12 @@ export default function PeriodontalChart() {
     let deepPockets = 0;
     let moderatePockets = 0;
     let presentTeeth = 0;
-    
+    let maxPocketDepth = 0;
+
     [...TEETH_UPPER, ...TEETH_LOWER].forEach(tooth => {
       const data = teethData[tooth];
       if (data.missing) return;
-      
+
       presentTeeth++;
       ['buccal', 'lingual'].forEach(surface => {
         data[surface].probing.forEach((p, i) => {
@@ -1036,17 +1037,19 @@ export default function PeriodontalChart() {
           if (data[surface].plaque[i]) plaqueSites++;
           if (p >= 5) deepPockets++;
           else if (p >= 4) moderatePockets++;
+          if (p > maxPocketDepth) maxPocketDepth = p;
         });
       });
     });
-    
+
     return {
       totalTeeth: presentTeeth,
       totalSites,
       bop: totalSites > 0 ? ((bleedingSites / totalSites) * 100).toFixed(1) : 0,
       plaqueIndex: totalSites > 0 ? ((plaqueSites / totalSites) * 100).toFixed(1) : 0,
       deepPockets,
-      moderatePockets
+      moderatePockets,
+      maxPocketDepth
     };
   }, [teethData]);
   
