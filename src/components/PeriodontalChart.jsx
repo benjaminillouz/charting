@@ -1170,91 +1170,195 @@ export default function PeriodontalChart() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 15;
+      let yPos = 0;
 
-      // En-tête
-      pdf.setFillColor(14, 165, 233); // sky-500
-      pdf.rect(0, 0, pageWidth, 35, 'F');
+      // En-tête avec fond coloré
+      pdf.setFillColor(14, 165, 233);
+      pdf.rect(0, 0, pageWidth, 32, 'F');
 
       pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(20);
+      pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Charting Parodontal', margin, 15);
+      pdf.text('Charting Parodontal', margin, 12);
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(contextInfo.centreNom || 'CEMEDIS', margin, 23);
-      pdf.text(`Date: ${patientInfo.date}`, margin, 30);
+      pdf.text(contextInfo.centreNom || 'CEMEDIS', margin, 20);
+      pdf.text('Date: ' + patientInfo.date, margin, 27);
+
+      yPos = 40;
 
       // Informations patient
       pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(14);
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 25, 'F');
+      pdf.setDrawColor(226, 232, 240);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 25, 'S');
+
+      pdf.setFontSize(11);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Informations Patient', margin, 45);
-
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      const patientFullName = `${patientInfo.firstName} ${patientInfo.name}`.trim() || 'Non renseigné';
-      pdf.text(`Patient: ${patientFullName}`, margin, 53);
-      pdf.text(`ID Patient: ${patientInfo.id || 'N/A'}`, margin, 60);
-      pdf.text(`Examinateur: ${patientInfo.examiner || 'Non renseigné'}`, margin + 80, 53);
-      if (contextInfo.praticienNom) {
-        pdf.text(`Praticien: ${contextInfo.praticienNom}`, margin + 80, 60);
-      }
-
-      // Statistiques
-      pdf.setFillColor(241, 245, 249); // slate-100
-      pdf.rect(margin, 68, pageWidth - 2 * margin, 25, 'F');
-
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Statistiques', margin + 5, 78);
+      pdf.text('Informations Patient', margin + 5, yPos + 7);
 
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
-      const statsY = 86;
-      pdf.text(`Dents présentes: ${stats.totalTeeth}`, margin + 5, statsY);
-      pdf.text(`Sites: ${stats.totalSites}`, margin + 45, statsY);
-      pdf.text(`BOP: ${stats.bop}%`, margin + 75, statsY);
-      pdf.text(`Plaque: ${stats.plaqueIndex}%`, margin + 105, statsY);
-      pdf.text(`Poches ≥5mm: ${stats.deepPockets}`, margin + 140, statsY);
+      const patientFullName = ((patientInfo.firstName || '') + ' ' + (patientInfo.name || '')).trim() || 'Non renseigne';
+      pdf.text('Patient: ' + patientFullName, margin + 5, yPos + 15);
+      pdf.text('ID: ' + (patientInfo.id || 'N/A'), margin + 5, yPos + 21);
+      pdf.text('Examinateur: ' + (patientInfo.examiner || contextInfo.praticienNom || 'Non renseigne'), margin + 100, yPos + 15);
+
+      yPos += 32;
+
+      // Statistiques
+      pdf.setFillColor(240, 253, 244);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 18, 'F');
+      pdf.setDrawColor(187, 247, 208);
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 18, 'S');
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(22, 101, 52);
+      pdf.text('Statistiques', margin + 5, yPos + 6);
+
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Dents: ' + stats.totalTeeth + '  |  Sites: ' + stats.totalSites + '  |  BOP: ' + stats.bop + '%  |  Plaque: ' + stats.plaqueIndex + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
+
+      yPos += 25;
+
+      // Tableau Arcade Maxillaire
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Arcade Maxillaire', margin, yPos);
+      yPos += 5;
+
+      const colWidth = 10;
+      const startX = margin;
+
+      // En-tête
+      pdf.setFontSize(6);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(startX, yPos, 180, 5, 'F');
+
+      pdf.text('', startX + 2, yPos + 3.5);
+      TEETH_UPPER.forEach((tooth, i) => {
+        pdf.text(String(tooth), startX + 12 + (i * colWidth), yPos + 3.5);
+      });
+      yPos += 5;
+
+      // Données PD Vestibulaire
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('PD V', startX + 2, yPos + 3.5);
+      TEETH_UPPER.forEach((tooth, i) => {
+        const data = teethData[tooth];
+        if (!data.missing) {
+          pdf.text(data.buccal.probing.join('-'), startX + 12 + (i * colWidth), yPos + 3.5);
+        } else {
+          pdf.setTextColor(180, 180, 180);
+          pdf.text('X', startX + 14 + (i * colWidth), yPos + 3.5);
+          pdf.setTextColor(0, 0, 0);
+        }
+      });
+      yPos += 4;
+
+      // Données PD Palatin
+      pdf.text('PD P', startX + 2, yPos + 3.5);
+      TEETH_UPPER.forEach((tooth, i) => {
+        const data = teethData[tooth];
+        if (!data.missing) {
+          pdf.text(data.lingual.probing.join('-'), startX + 12 + (i * colWidth), yPos + 3.5);
+        }
+      });
+      yPos += 8;
+
+      // Tableau Arcade Mandibulaire
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Arcade Mandibulaire', margin, yPos);
+      yPos += 5;
+
+      pdf.setFontSize(6);
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(startX, yPos, 180, 5, 'F');
+
+      pdf.text('', startX + 2, yPos + 3.5);
+      TEETH_LOWER.forEach((tooth, i) => {
+        pdf.text(String(tooth), startX + 12 + (i * colWidth), yPos + 3.5);
+      });
+      yPos += 5;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('PD V', startX + 2, yPos + 3.5);
+      TEETH_LOWER.forEach((tooth, i) => {
+        const data = teethData[tooth];
+        if (!data.missing) {
+          pdf.text(data.buccal.probing.join('-'), startX + 12 + (i * colWidth), yPos + 3.5);
+        } else {
+          pdf.setTextColor(180, 180, 180);
+          pdf.text('X', startX + 14 + (i * colWidth), yPos + 3.5);
+          pdf.setTextColor(0, 0, 0);
+        }
+      });
+      yPos += 4;
+
+      pdf.text('PD L', startX + 2, yPos + 3.5);
+      TEETH_LOWER.forEach((tooth, i) => {
+        const data = teethData[tooth];
+        if (!data.missing) {
+          pdf.text(data.lingual.probing.join('-'), startX + 12 + (i * colWidth), yPos + 3.5);
+        }
+      });
+      yPos += 10;
 
       // Capture du graphique
       if (chartRef.current) {
-        const canvas = await html2canvas(chartRef.current, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff'
-        });
+        try {
+          const canvas = await html2canvas(chartRef.current, {
+            scale: 1.5,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
 
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pageWidth - 2 * margin;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          const imgData = canvas.toDataURL('image/jpeg', 0.7);
+          const availableWidth = pageWidth - 2 * margin;
+          const imgRatio = canvas.width / canvas.height;
+          let imgWidth = availableWidth;
+          let imgHeight = imgWidth / imgRatio;
 
-        // Si l'image est trop grande, on la redimensionne
-        const maxImgHeight = pageHeight - 110;
-        const finalImgHeight = Math.min(imgHeight, maxImgHeight);
-        const finalImgWidth = (finalImgHeight * canvas.width) / canvas.height;
+          const maxHeight = pageHeight - yPos - 20;
+          if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * imgRatio;
+          }
 
-        pdf.addImage(imgData, 'PNG', margin, 100, Math.min(imgWidth, finalImgWidth), finalImgHeight);
+          pdf.addImage(imgData, 'JPEG', margin, yPos, imgWidth, imgHeight);
+        } catch (e) {
+          console.warn('Capture echouee:', e);
+        }
       }
 
       // Pied de page
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setTextColor(128, 128, 128);
-      pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, margin, pageHeight - 10);
-      pdf.text('Charting Parodontal CEMEDIS', pageWidth - margin - 50, pageHeight - 10);
+      const dateStr = new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR');
+      pdf.text('Genere le ' + dateStr + ' - Charting Parodontal CEMEDIS', margin, pageHeight - 8);
 
-      // Convertir en base64 et data URL
-      const pdfOutput = pdf.output('datauristring');
-      const base64 = pdf.output('datauristring').split(',')[1];
+      // Générer blob URL pour l'affichage
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
 
-      setPdfDataUrl(pdfOutput);
-      setPdfBase64(base64);
+      // Générer base64 pour l'envoi
+      const base64Data = pdf.output('datauristring').split(',')[1];
+
+      setPdfDataUrl(blobUrl);
+      setPdfBase64(base64Data);
       setShowPdfModal(true);
     } catch (error) {
-      console.error('Erreur lors de la génération du PDF:', error);
-      alert('Erreur lors de la génération du PDF');
+      console.error('Erreur PDF:', error);
+      alert('Erreur lors de la generation du PDF: ' + error.message);
     } finally {
       setIsGeneratingPdf(false);
     }
