@@ -257,9 +257,24 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
 
   useEffect(() => {
     if (stats) {
+      // Calculer le stade suggéré basé sur la profondeur max des poches
+      const maxDepth = stats.maxPocketDepth || (stats.deepPockets > 0 ? 6 : (stats.moderatePockets > 0 ? 4 : 3));
+      let suggestedStade = null;
+
+      if (maxDepth >= 6) {
+        suggestedStade = 3; // Stade 3 si poches ≥6mm
+      } else if (maxDepth >= 5) {
+        suggestedStade = 3; // Stade 3 si poches ≥5mm
+      } else if (maxDepth >= 4) {
+        suggestedStade = 2; // Stade 2 si poches 4-5mm
+      } else if (maxDepth >= 1) {
+        suggestedStade = 1; // Stade 1 si poches 1-4mm
+      }
+
       setDiagnostic(prev => ({
         ...prev,
-        profondeurPochesMax: stats.deepPockets > 0 ? 6 : (stats.moderatePockets > 0 ? 4 : 3)
+        profondeurPochesMax: maxDepth,
+        stade: prev.stade || suggestedStade // Ne pas écraser si déjà défini
       }));
     }
   }, [stats]);
