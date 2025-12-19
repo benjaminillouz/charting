@@ -335,7 +335,7 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
       let yPos = 0;
 
       // En-tête avec fond coloré (plus grand pour inclure praticien)
-      pdf.setFillColor(147, 51, 234); // Purple
+      pdf.setFillColor(0, 75, 99); // Dark teal - professional medical color
       pdf.rect(0, 0, pageWidth, 38, 'F');
 
       pdf.setTextColor(255, 255, 255);
