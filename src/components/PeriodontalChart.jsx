@@ -1177,7 +1177,7 @@ export default function PeriodontalChart() {
       let yPos = 0;
 
       // En-tête avec fond coloré
-      pdf.setFillColor(14, 165, 233);
+      pdf.setFillColor(0, 75, 99); // Dark teal - professional medical color
       pdf.rect(0, 0, pageWidth, 32, 'F');
 
       pdf.setTextColor(255, 255, 255);
