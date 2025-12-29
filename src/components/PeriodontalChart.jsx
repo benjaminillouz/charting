@@ -1787,7 +1787,7 @@ export default function PeriodontalChart() {
                           <ProbingInput
                             values={teethData[selectedTooth][surface].probing}
                             onChange={(vals) => updateToothData(selectedTooth, surface, 'probing', vals)}
-                            label="PD"
+                            label="SOND"
                           />
                           <ProbingInput
                             values={teethData[selectedTooth][surface].recession}
@@ -1805,7 +1805,7 @@ export default function PeriodontalChart() {
                             values={teethData[selectedTooth][surface].plaque}
                             onChange={(vals) => updateToothData(selectedTooth, surface, 'plaque', vals)}
                             color="plaque"
-                            label="PLI"
+                            label="PLQ"
                           />
                           <BooleanIndicators
                             values={teethData[selectedTooth][surface].suppuration}
