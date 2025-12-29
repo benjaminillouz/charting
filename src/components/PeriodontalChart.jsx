@@ -552,7 +552,7 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
 const ProbingInput = ({ values, onChange, label, isRecession = false }) => {
   return (
     <div className="flex items-center gap-1">
-      <span className="text-xs text-slate-500 w-6">{label}</span>
+      <span className="text-xs text-slate-500 w-10">{label}</span>
       {values.map((val, idx) => (
         <input
           key={idx}
@@ -585,7 +585,7 @@ const BooleanIndicators = ({ values, onChange, color, label }) => {
   
   return (
     <div className="flex items-center gap-1">
-      <span className="text-xs text-slate-500 w-6">{label}</span>
+      <span className="text-xs text-slate-500 w-10">{label}</span>
       {values.map((val, idx) => (
         <button
           key={idx}
