@@ -156,7 +156,7 @@ const MultiSelect = ({ options, value, onChange, label }) => (
 );
 
 // Composant principal de diagnostic
-export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, radiographs = [], onPdfGenerated }) {
+export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, radiographs = [], photos = [], onPdfGenerated }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [diagnostic, setDiagnostic] = useState({
     adressePar: '',
@@ -595,6 +595,51 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
 
           radioX += radioWidth + 10;
           radioCount++;
+        }
+      }
+
+      // Photographies (nouvelle page si présentes)
+      if (photos && photos.length > 0) {
+        pdf.addPage();
+
+        // En-tête de la page photos
+        pdf.setFillColor(0, 75, 99);
+        pdf.rect(0, 0, pageWidth, 25, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Photographies', margin, 15);
+
+        let photoY = 35;
+        const photoWidth = 85;
+        const photoHeight = 65;
+        let photoX = margin;
+        let photoCount = 0;
+
+        for (const photo of photos) {
+          if (photoCount > 0 && photoCount % 2 === 0) {
+            photoY += photoHeight + 15;
+            photoX = margin;
+          }
+          if (photoY + photoHeight > pageHeight - 20) {
+            pdf.addPage();
+            photoY = 20;
+            photoX = margin;
+          }
+
+          try {
+            pdf.addImage(photo.data, 'JPEG', photoX, photoY, photoWidth, photoHeight);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(photo.name, photoX, photoY + photoHeight + 5);
+          } catch (e) {
+            console.warn('Erreur ajout photo:', e);
+          }
+
+          photoX += photoWidth + 10;
+          photoCount++;
         }
       }
 
