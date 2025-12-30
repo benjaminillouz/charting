@@ -549,13 +549,15 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
 };
 
 // Composant pour les entrées de sondage
-const ProbingInput = ({ values, onChange, label, isRecession = false }) => {
+const ProbingInput = ({ values, onChange, label, isRecession = false, autoFocus = false, inputRefs, onEnterPress }) => {
   return (
     <div className="flex items-center gap-1">
       <span className="text-xs text-slate-500 w-10">{label}</span>
       {values.map((val, idx) => (
         <input
           key={idx}
+          ref={inputRefs ? (el) => inputRefs[idx] = el : null}
+          autoFocus={autoFocus && idx === 0}
           type="number"
           min={isRecession ? -10 : 0}
           max={15}
@@ -565,9 +567,17 @@ const ProbingInput = ({ values, onChange, label, isRecession = false }) => {
             newValues[idx] = parseInt(e.target.value) || 0;
             onChange(newValues);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (onEnterPress) {
+                onEnterPress(idx);
+              }
+            }
+          }}
           className={`w-10 h-8 text-center text-sm border rounded-md focus:ring-2 focus:ring-sky-500 focus:border-transparent
-            ${!isRecession && val >= 5 ? 'bg-red-100 border-red-400 text-red-700' : 
-              !isRecession && val >= 4 ? 'bg-amber-100 border-amber-400 text-amber-700' : 
+            ${!isRecession && val >= 5 ? 'bg-red-100 border-red-400 text-red-700' :
+              !isRecession && val >= 4 ? 'bg-amber-100 border-amber-400 text-amber-700' :
               'bg-white border-slate-300'}`}
         />
       ))}
@@ -598,6 +608,132 @@ const BooleanIndicators = ({ values, onChange, color, label }) => {
             val ? colors[color].active + ' border-transparent' : colors[color].inactive
           }`}
         />
+      ))}
+    </div>
+  );
+};
+
+// Composant pour les entrées détaillées d'une dent avec navigation clavier
+const ToothDetailInputs = ({ selectedTooth, teethData, updateToothData, isUpperTooth }) => {
+  const inputRefs = useRef({});
+
+  // Auto-focus on first input (buccal SOND distal) when tooth changes
+  useEffect(() => {
+    if (selectedTooth) {
+      setTimeout(() => {
+        const firstRef = inputRefs.current['buccal-probing-0'];
+        if (firstRef) {
+          firstRef.focus();
+          firstRef.select();
+        }
+      }, 50);
+    }
+  }, [selectedTooth]);
+
+  // Navigation order: buccal probing (0,1,2) -> buccal recession (0,1,2) -> lingual probing (0,1,2) -> lingual recession (0,1,2)
+  const handleEnterPress = (surface, type, idx) => {
+    const navOrder = [
+      'buccal-probing-0', 'buccal-probing-1', 'buccal-probing-2',
+      'buccal-recession-0', 'buccal-recession-1', 'buccal-recession-2',
+      'lingual-probing-0', 'lingual-probing-1', 'lingual-probing-2',
+      'lingual-recession-0', 'lingual-recession-1', 'lingual-recession-2'
+    ];
+    const currentKey = `${surface}-${type}-${idx}`;
+    const currentIndex = navOrder.indexOf(currentKey);
+    if (currentIndex < navOrder.length - 1) {
+      const nextKey = navOrder[currentIndex + 1];
+      const nextRef = inputRefs.current[nextKey];
+      if (nextRef) {
+        nextRef.focus();
+        nextRef.select();
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {['buccal', 'lingual'].map(surface => (
+        <div key={surface} className="p-3 bg-slate-50 rounded-xl">
+          <h4 className="text-xs font-semibold text-slate-700 mb-2">
+            {surface === 'buccal' ? 'Vestibulaire' : isUpperTooth ? 'Palatin' : 'Lingual'}
+          </h4>
+          <div className="space-y-1.5">
+            {/* SOND */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-slate-500 w-10">SOND</span>
+              {teethData[selectedTooth][surface].probing.map((val, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => inputRefs.current[`${surface}-probing-${idx}`] = el}
+                  type="number"
+                  min="0"
+                  max="15"
+                  value={val}
+                  onChange={(e) => {
+                    const newValues = [...teethData[selectedTooth][surface].probing];
+                    newValues[idx] = parseInt(e.target.value) || 0;
+                    updateToothData(selectedTooth, surface, 'probing', newValues);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleEnterPress(surface, 'probing', idx);
+                    }
+                  }}
+                  className={`w-10 h-8 text-center text-sm border rounded-md focus:ring-2 focus:ring-sky-500 focus:border-transparent
+                    ${val >= 5 ? 'bg-red-100 border-red-400 text-red-700' :
+                      val >= 4 ? 'bg-amber-100 border-amber-400 text-amber-700' :
+                      'bg-white border-slate-300'}`}
+                />
+              ))}
+            </div>
+            {/* REC */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-slate-500 w-10">REC</span>
+              {teethData[selectedTooth][surface].recession.map((val, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => inputRefs.current[`${surface}-recession-${idx}`] = el}
+                  type="number"
+                  min="-10"
+                  max="15"
+                  value={val}
+                  onChange={(e) => {
+                    const newValues = [...teethData[selectedTooth][surface].recession];
+                    newValues[idx] = parseInt(e.target.value) || 0;
+                    updateToothData(selectedTooth, surface, 'recession', newValues);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleEnterPress(surface, 'recession', idx);
+                    }
+                  }}
+                  className="w-10 h-8 text-center text-sm border rounded-md focus:ring-2 focus:ring-sky-500 focus:border-transparent bg-white border-slate-300"
+                />
+              ))}
+            </div>
+            {/* Boolean indicators */}
+            <BooleanIndicators
+              values={teethData[selectedTooth][surface].bleeding}
+              onChange={(vals) => updateToothData(selectedTooth, surface, 'bleeding', vals)}
+              color="bleeding"
+              label="Saign."
+            />
+            <BooleanIndicators
+              values={teethData[selectedTooth][surface].plaque}
+              onChange={(vals) => updateToothData(selectedTooth, surface, 'plaque', vals)}
+              color="plaque"
+              label="PLQ"
+            />
+            <BooleanIndicators
+              values={teethData[selectedTooth][surface].suppuration}
+              onChange={(vals) => updateToothData(selectedTooth, surface, 'suppuration', vals)}
+              color="suppuration"
+              label="SUP"
+            />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -776,7 +912,46 @@ const PerioGraph = ({ teeth, teethData, isUpper, side }) => {
 };
 
 // Composant pour la grille de données
-const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper }) => {
+const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper, autoFocus = false }) => {
+  const inputRefs = useRef({});
+
+  // Auto-focus on first input (tooth 18, distal) when autoFocus is true
+  useEffect(() => {
+    if (autoFocus && surface === 'buccal') {
+      const firstTooth = teeth[0];
+      const refKey = `${firstTooth}-0`;
+      if (inputRefs.current[refKey]) {
+        inputRefs.current[refKey].focus();
+        inputRefs.current[refKey].select();
+      }
+    }
+  }, [autoFocus, surface, teeth]);
+
+  // Handle Enter key navigation
+  const handleEnterPress = (tooth, idx) => {
+    const toothIndex = teeth.indexOf(tooth);
+    let nextTooth, nextIdx;
+
+    if (idx < 2) {
+      // Move to next site on same tooth
+      nextTooth = tooth;
+      nextIdx = idx + 1;
+    } else if (toothIndex < teeth.length - 1) {
+      // Move to first site of next tooth
+      nextTooth = teeth[toothIndex + 1];
+      nextIdx = 0;
+    } else {
+      // End of row - no navigation
+      return;
+    }
+
+    const refKey = `${nextTooth}-${nextIdx}`;
+    if (inputRefs.current[refKey] && !teethData[nextTooth].missing) {
+      inputRefs.current[refKey].focus();
+      inputRefs.current[refKey].select();
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="text-xs border-collapse">
@@ -813,6 +988,7 @@ const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper }) => {
                   {data.probing.map((val, idx) => (
                     <td key={idx} className={`px-0.5 py-0.5 text-center border-l border-slate-100 ${idx === 0 ? 'border-l-slate-300' : ''}`}>
                       <input
+                        ref={(el) => inputRefs.current[`${tooth}-${idx}`] = el}
                         type="number"
                         min="0"
                         max="15"
@@ -823,10 +999,16 @@ const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper }) => {
                           newProbing[idx] = parseInt(e.target.value) || 0;
                           onUpdate(tooth, surface, 'probing', newProbing);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleEnterPress(tooth, idx);
+                          }
+                        }}
                         className={`w-8 h-6 text-center border rounded text-xs
                           ${teethData[tooth].missing ? 'bg-slate-100 text-slate-400' :
-                            val >= 5 ? 'bg-red-100 border-red-300 text-red-700 font-bold' : 
-                            val >= 4 ? 'bg-amber-100 border-amber-300 text-amber-700' : 
+                            val >= 5 ? 'bg-red-100 border-red-300 text-red-700 font-bold' :
+                            val >= 4 ? 'bg-amber-100 border-amber-300 text-amber-700' :
                             'bg-white border-slate-200'}`}
                       />
                     </td>
@@ -1777,46 +1959,12 @@ export default function PeriodontalChart() {
                   </div>
 
                   {/* Sondage détaillé */}
-                  <div className="space-y-3">
-                    {['buccal', 'lingual'].map(surface => (
-                      <div key={surface} className="p-3 bg-slate-50 rounded-xl">
-                        <h4 className="text-xs font-semibold text-slate-700 mb-2">
-                          {surface === 'buccal' ? 'Vestibulaire' : TEETH_UPPER.includes(selectedTooth) ? 'Palatin' : 'Lingual'}
-                        </h4>
-                        <div className="space-y-1.5">
-                          <ProbingInput
-                            values={teethData[selectedTooth][surface].probing}
-                            onChange={(vals) => updateToothData(selectedTooth, surface, 'probing', vals)}
-                            label="SOND"
-                          />
-                          <ProbingInput
-                            values={teethData[selectedTooth][surface].recession}
-                            onChange={(vals) => updateToothData(selectedTooth, surface, 'recession', vals)}
-                            label="REC"
-                            isRecession
-                          />
-                          <BooleanIndicators
-                            values={teethData[selectedTooth][surface].bleeding}
-                            onChange={(vals) => updateToothData(selectedTooth, surface, 'bleeding', vals)}
-                            color="bleeding"
-                            label="Saign."
-                          />
-                          <BooleanIndicators
-                            values={teethData[selectedTooth][surface].plaque}
-                            onChange={(vals) => updateToothData(selectedTooth, surface, 'plaque', vals)}
-                            color="plaque"
-                            label="PLQ"
-                          />
-                          <BooleanIndicators
-                            values={teethData[selectedTooth][surface].suppuration}
-                            onChange={(vals) => updateToothData(selectedTooth, surface, 'suppuration', vals)}
-                            color="suppuration"
-                            label="SUP"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <ToothDetailInputs
+                    selectedTooth={selectedTooth}
+                    teethData={teethData}
+                    updateToothData={updateToothData}
+                    isUpperTooth={TEETH_UPPER.includes(selectedTooth)}
+                  />
                 </div>
               </div>
             )}
@@ -1827,12 +1975,13 @@ export default function PeriodontalChart() {
             {/* Arcade supérieure */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 overflow-x-auto">
               <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Maxillaire</h2>
-              <DataGrid 
-                teeth={TEETH_UPPER} 
-                teethData={teethData} 
-                surface="buccal" 
+              <DataGrid
+                teeth={TEETH_UPPER}
+                teethData={teethData}
+                surface="buccal"
                 onUpdate={updateToothData}
                 isUpper={true}
+                autoFocus={true}
               />
               <div className="my-4 border-t border-slate-200"></div>
               <DataGrid 
