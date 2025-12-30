@@ -1151,12 +1151,14 @@ export default function PeriodontalChart() {
     centreId: '',
     centreNom: ''
   });
-  const [activeView, setActiveView] = useState('chart'); // 'chart' or 'data'
+  const [activeView, setActiveView] = useState('chart'); // 'chart', 'data', 'diagnostic', 'radio'
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfDataUrl, setPdfDataUrl] = useState(null);
   const [pdfBase64, setPdfBase64] = useState(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSendingToVeasy, setIsSendingToVeasy] = useState(false);
+  const [radiographs, setRadiographs] = useState([]); // Store captured radiographs
+  const [isCapturing, setIsCapturing] = useState(false);
   const chartRef = useRef(null);
 
   // Lecture des paramètres URL au chargement
@@ -1526,6 +1528,54 @@ export default function PeriodontalChart() {
         }
       }
 
+      // Radiographies (nouvelle page si présentes)
+      if (radiographs.length > 0) {
+        pdf.addPage();
+
+        // En-tête de la page radiographies
+        pdf.setFillColor(0, 75, 99);
+        pdf.rect(0, 0, pageWidth, 25, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Radiographies', margin, 15);
+
+        let radioY = 35;
+        const radioWidth = 85;
+        const radioHeight = 65;
+        let radioX = margin;
+        let radioCount = 0;
+
+        for (const radio of radiographs) {
+          // Vérifier si on doit passer à une nouvelle ligne ou page
+          if (radioCount > 0 && radioCount % 2 === 0) {
+            radioY += radioHeight + 15;
+            radioX = margin;
+          }
+          if (radioY + radioHeight > pageHeight - 20) {
+            pdf.addPage();
+            radioY = 20;
+            radioX = margin;
+          }
+
+          try {
+            pdf.addImage(radio.data, 'PNG', radioX, radioY, radioWidth, radioHeight);
+
+            // Nom de la radiographie
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(radio.name, radioX, radioY + radioHeight + 5);
+          } catch (e) {
+            console.warn('Erreur ajout radiographie:', e);
+          }
+
+          radioX += radioWidth + 10;
+          radioCount++;
+        }
+      }
+
       // Pied de page
       pdf.setFontSize(7);
       pdf.setTextColor(128, 128, 128);
@@ -1814,6 +1864,16 @@ export default function PeriodontalChart() {
           >
             Diagnostic
           </button>
+          <button
+            onClick={() => setActiveView('radio')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'radio'
+                ? 'bg-teal-500 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Radiographies
+          </button>
         </div>
         
         {activeView === 'chart' ? (
@@ -2013,19 +2073,139 @@ export default function PeriodontalChart() {
               />
             </div>
           </div>
-        ) : (
+        ) : activeView === 'diagnostic' ? (
           /* Vue diagnostic */
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
             <DiagnosticParodontal
               stats={stats}
               patientInfo={patientInfo}
               contextInfo={contextInfo}
+              radiographs={radiographs}
               onPdfGenerated={(blobUrl, base64) => {
                 setPdfDataUrl(blobUrl);
                 setPdfBase64(base64);
                 setShowPdfModal(true);
               }}
             />
+          </div>
+        ) : (
+          /* Vue radiographies */
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">Radiographies</h2>
+
+            {/* Bouton de capture d'écran */}
+            <div className="mb-6">
+              <button
+                onClick={async () => {
+                  setIsCapturing(true);
+                  try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                      video: { mediaSource: 'screen' }
+                    });
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    await video.play();
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0);
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    const imageData = canvas.toDataURL('image/png');
+                    const newRadio = {
+                      id: Date.now(),
+                      data: imageData,
+                      name: `Radiographie ${radiographs.length + 1}`,
+                      date: new Date().toLocaleDateString('fr-FR')
+                    };
+                    setRadiographs(prev => [...prev, newRadio]);
+                  } catch (err) {
+                    if (err.name !== 'AbortError') {
+                      console.error('Erreur de capture:', err);
+                      alert('Erreur lors de la capture d\'écran');
+                    }
+                  } finally {
+                    setIsCapturing(false);
+                  }
+                }}
+                disabled={isCapturing}
+                className="px-4 py-3 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isCapturing ? (
+                  <>
+                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Capture en cours...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Capturer une radiographie
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-slate-500 mt-2">
+                Cliquez pour sélectionner une fenêtre ou un écran contenant la radiographie à capturer
+              </p>
+            </div>
+
+            {/* Grille des radiographies */}
+            {radiographs.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {radiographs.map((radio, index) => (
+                  <div key={radio.id} className="relative group">
+                    <div className="aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                      <img
+                        src={radio.data}
+                        alt={radio.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={radio.name}
+                        onChange={(e) => {
+                          const updated = [...radiographs];
+                          updated[index].name = e.target.value;
+                          setRadiographs(updated);
+                        }}
+                        className="w-full text-sm font-medium text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-sky-500 focus:outline-none px-1"
+                      />
+                      <p className="text-xs text-slate-500 px-1">{radio.date}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm('Supprimer cette radiographie ?')) {
+                          setRadiographs(prev => prev.filter(r => r.id !== radio.id));
+                        }
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-500">
+                <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="font-medium">Aucune radiographie</p>
+                <p className="text-sm">Utilisez le bouton ci-dessus pour capturer une radiographie</p>
+              </div>
+            )}
           </div>
         )}
 
