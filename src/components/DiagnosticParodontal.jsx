@@ -156,7 +156,7 @@ const MultiSelect = ({ options, value, onChange, label }) => (
 );
 
 // Composant principal de diagnostic
-export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, onPdfGenerated }) {
+export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, radiographs = [], onPdfGenerated }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [diagnostic, setDiagnostic] = useState({
     adressePar: '',
@@ -548,6 +548,54 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
         pdf.setTextColor(0, 0, 0);
         const splitConclusion = pdf.splitTextToSize(conclusion, pageWidth - 2 * margin - 10);
         pdf.text(splitConclusion.slice(0, 10), margin + 5, yPos + 12);
+      }
+
+      // Radiographies (nouvelle page si présentes)
+      if (radiographs && radiographs.length > 0) {
+        pdf.addPage();
+
+        // En-tête de la page radiographies
+        pdf.setFillColor(0, 75, 99);
+        pdf.rect(0, 0, pageWidth, 25, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Radiographies', margin, 15);
+
+        let radioY = 35;
+        const radioWidth = 85;
+        const radioHeight = 65;
+        let radioX = margin;
+        let radioCount = 0;
+
+        for (const radio of radiographs) {
+          // Vérifier si on doit passer à une nouvelle ligne ou page
+          if (radioCount > 0 && radioCount % 2 === 0) {
+            radioY += radioHeight + 15;
+            radioX = margin;
+          }
+          if (radioY + radioHeight > pageHeight - 20) {
+            pdf.addPage();
+            radioY = 20;
+            radioX = margin;
+          }
+
+          try {
+            pdf.addImage(radio.data, 'PNG', radioX, radioY, radioWidth, radioHeight);
+
+            // Nom de la radiographie
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(radio.name, radioX, radioY + radioHeight + 5);
+          } catch (e) {
+            console.warn('Erreur ajout radiographie:', e);
+          }
+
+          radioX += radioWidth + 10;
+          radioCount++;
+        }
       }
 
       // Pied de page
