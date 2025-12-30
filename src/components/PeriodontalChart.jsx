@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import Peer from 'peerjs';
+import QRCode from 'qrcode';
 import DiagnosticParodontal from './DiagnosticParodontal';
 
 // Numérotation FDI internationale
@@ -1159,7 +1161,12 @@ export default function PeriodontalChart() {
   const [isSendingToVeasy, setIsSendingToVeasy] = useState(false);
   const [radiographs, setRadiographs] = useState([]); // Store captured radiographs
   const [isCapturing, setIsCapturing] = useState(false);
+  const [photos, setPhotos] = useState([]); // Store photos from mobile
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [peerStatus, setPeerStatus] = useState('idle'); // idle, waiting, connected
   const chartRef = useRef(null);
+  const peerRef = useRef(null);
+  const connRef = useRef(null);
 
   // Lecture des paramètres URL au chargement
   useEffect(() => {
@@ -1576,6 +1583,51 @@ export default function PeriodontalChart() {
         }
       }
 
+      // Photographies (nouvelle page si présentes)
+      if (photos.length > 0) {
+        pdf.addPage();
+
+        // En-tête de la page photos
+        pdf.setFillColor(0, 75, 99);
+        pdf.rect(0, 0, pageWidth, 25, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Photographies', margin, 15);
+
+        let photoY = 35;
+        const photoWidth = 85;
+        const photoHeight = 65;
+        let photoX = margin;
+        let photoCount = 0;
+
+        for (const photo of photos) {
+          if (photoCount > 0 && photoCount % 2 === 0) {
+            photoY += photoHeight + 15;
+            photoX = margin;
+          }
+          if (photoY + photoHeight > pageHeight - 20) {
+            pdf.addPage();
+            photoY = 20;
+            photoX = margin;
+          }
+
+          try {
+            pdf.addImage(photo.data, 'JPEG', photoX, photoY, photoWidth, photoHeight);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(photo.name, photoX, photoY + photoHeight + 5);
+          } catch (e) {
+            console.warn('Erreur ajout photo:', e);
+          }
+
+          photoX += photoWidth + 10;
+          photoCount++;
+        }
+      }
+
       // Pied de page
       pdf.setFontSize(7);
       pdf.setTextColor(128, 128, 128);
@@ -1874,6 +1926,16 @@ export default function PeriodontalChart() {
           >
             Radiographies
           </button>
+          <button
+            onClick={() => setActiveView('photos')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'photos'
+                ? 'bg-indigo-500 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Photographies
+          </button>
         </div>
         
         {activeView === 'chart' ? (
@@ -2081,6 +2143,7 @@ export default function PeriodontalChart() {
               patientInfo={patientInfo}
               contextInfo={contextInfo}
               radiographs={radiographs}
+              photos={photos}
               onPdfGenerated={(blobUrl, base64) => {
                 setPdfDataUrl(blobUrl);
                 setPdfBase64(base64);
@@ -2088,7 +2151,7 @@ export default function PeriodontalChart() {
               }}
             />
           </div>
-        ) : (
+        ) : activeView === 'radio' ? (
           /* Vue radiographies */
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">Radiographies</h2>
@@ -2204,6 +2267,176 @@ export default function PeriodontalChart() {
                 </svg>
                 <p className="font-medium">Aucune radiographie</p>
                 <p className="text-sm">Utilisez le bouton ci-dessus pour capturer une radiographie</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Vue photographies */
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">Photographies</h2>
+
+            {/* Section QR Code */}
+            <div className="mb-6 p-6 bg-indigo-50 rounded-xl border border-indigo-200">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-indigo-900 mb-2">
+                    Ajouter une photo depuis votre téléphone
+                  </h3>
+                  <p className="text-sm text-indigo-700 mb-4">
+                    Scannez le QR code avec votre téléphone pour prendre une photo qui sera automatiquement ajoutée au dossier patient.
+                  </p>
+
+                  {peerStatus === 'idle' && (
+                    <button
+                      onClick={async () => {
+                        setPeerStatus('waiting');
+
+                        // Create peer
+                        const peer = new Peer();
+                        peerRef.current = peer;
+
+                        peer.on('open', async (id) => {
+                          // Generate QR code with URL
+                          const url = `https://charting.cemedis.app/?photo=1&peer=${id}`;
+                          const qrDataUrl = await QRCode.toDataURL(url, {
+                            width: 200,
+                            margin: 2,
+                            color: { dark: '#4f46e5', light: '#ffffff' }
+                          });
+                          setQrCodeUrl(qrDataUrl);
+                        });
+
+                        peer.on('connection', (conn) => {
+                          connRef.current = conn;
+                          setPeerStatus('connected');
+
+                          conn.on('data', (data) => {
+                            if (data.type === 'photo') {
+                              const newPhoto = {
+                                id: Date.now(),
+                                data: data.data,
+                                name: `Photo ${photos.length + 1}`,
+                                date: new Date().toLocaleDateString('fr-FR')
+                              };
+                              setPhotos(prev => [...prev, newPhoto]);
+                            }
+                          });
+
+                          conn.on('close', () => {
+                            setPeerStatus('waiting');
+                          });
+                        });
+
+                        peer.on('error', (err) => {
+                          console.error('Peer error:', err);
+                          setPeerStatus('idle');
+                          setQrCodeUrl(null);
+                        });
+                      }}
+                      className="px-4 py-3 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Générer un QR Code
+                    </button>
+                  )}
+
+                  {peerStatus === 'waiting' && (
+                    <div className="flex items-center gap-2 text-indigo-600">
+                      <svg className="animate-pulse w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                      </svg>
+                      <span className="font-medium">En attente de connexion...</span>
+                    </div>
+                  )}
+
+                  {peerStatus === 'connected' && (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="font-medium">Téléphone connecté !</span>
+                    </div>
+                  )}
+
+                  {(peerStatus === 'waiting' || peerStatus === 'connected') && (
+                    <button
+                      onClick={() => {
+                        if (connRef.current) connRef.current.close();
+                        if (peerRef.current) peerRef.current.destroy();
+                        setPeerStatus('idle');
+                        setQrCodeUrl(null);
+                      }}
+                      className="mt-3 px-3 py-1.5 text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+                    >
+                      Fermer la connexion
+                    </button>
+                  )}
+                </div>
+
+                {/* QR Code display */}
+                {qrCodeUrl && (
+                  <div className="flex flex-col items-center">
+                    <div className="bg-white p-3 rounded-xl shadow-md">
+                      <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                    </div>
+                    <p className="text-xs text-indigo-600 mt-2 text-center">
+                      Scannez avec votre téléphone
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Grille des photos */}
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {photos.map((photo, index) => (
+                  <div key={photo.id} className="relative group">
+                    <div className="aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                      <img
+                        src={photo.data}
+                        alt={photo.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={photo.name}
+                        onChange={(e) => {
+                          const updated = [...photos];
+                          updated[index].name = e.target.value;
+                          setPhotos(updated);
+                        }}
+                        className="w-full text-sm font-medium text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none px-1"
+                      />
+                      <p className="text-xs text-slate-500 px-1">{photo.date}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm('Supprimer cette photo ?')) {
+                          setPhotos(prev => prev.filter(p => p.id !== photo.id));
+                        }
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-500">
+                <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <p className="font-medium">Aucune photo</p>
+                <p className="text-sm">Générez un QR code ci-dessus pour ajouter des photos depuis votre téléphone</p>
               </div>
             )}
           </div>
