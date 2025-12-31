@@ -2432,8 +2432,9 @@ export default function PeriodontalChart() {
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">Radiographies</h2>
 
-            {/* Bouton de capture d'écran */}
+            {/* Boutons d'ajout */}
             <div className="mb-6">
+              <div className="flex flex-wrap gap-3 mb-2">
               <button
                 onClick={async () => {
                   setIsCapturing(true);
@@ -2491,8 +2492,41 @@ export default function PeriodontalChart() {
                   </>
                 )}
               </button>
-              <p className="text-xs text-slate-500 mt-2">
-                Cliquez pour sélectionner une fenêtre ou un écran contenant la radiographie à capturer
+
+              {/* Bouton d'import local */}
+              <label className="px-4 py-3 bg-slate-500 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2 cursor-pointer inline-flex">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Importer depuis l'appareil
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    files.forEach((file, idx) => {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const newRadio = {
+                          id: Date.now() + idx,
+                          data: event.target.result,
+                          name: file.name.replace(/\.[^/.]+$/, '') || `Radiographie ${radiographs.length + idx + 1}`,
+                          date: new Date().toLocaleDateString('fr-FR')
+                        };
+                        setRadiographs(prev => [...prev, newRadio]);
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Capturez une fenêtre ou importez des images depuis votre appareil
               </p>
             </div>
 
@@ -2662,6 +2696,49 @@ export default function PeriodontalChart() {
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Section import local */}
+            <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-1">
+                    Importer depuis votre appareil
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Sélectionnez des photos depuis votre ordinateur ou appareil
+                  </p>
+                </div>
+                <label className="px-4 py-2.5 bg-slate-600 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors flex items-center gap-2 cursor-pointer">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Choisir des photos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files);
+                      files.forEach((file, idx) => {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const newPhoto = {
+                            id: Date.now() + idx,
+                            data: event.target.result,
+                            name: file.name.replace(/\.[^/.]+$/, '') || `Photo ${photos.length + idx + 1}`,
+                            date: new Date().toLocaleDateString('fr-FR')
+                          };
+                          setPhotos(prev => [...prev, newPhoto]);
+                        };
+                        reader.readAsDataURL(file);
+                      });
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
               </div>
             </div>
 
