@@ -51,16 +51,16 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
   const isCanine = [13, 23, 43, 33].includes(toothNumber);
   const isLateralIncisor = [12, 22, 42, 32].includes(toothNumber);
   const isCentralIncisor = [11, 21, 41, 31].includes(toothNumber);
-  
+
   // Implant SVG
   if (data.implant) {
     return (
-      <svg 
-        width="44" 
-        height="70" 
+      <svg
+        width="44"
+        height="70"
         viewBox="0 0 44 70"
         onClick={onClick}
-        style={{ 
+        style={{
           cursor: 'pointer',
           filter: isSelected ? 'drop-shadow(0 0 6px #0ea5e9)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.15))'
         }}
@@ -75,7 +75,7 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
         {isUpper ? (
           <g>
             {/* Couronne prothétique */}
-            <path 
+            <path
               d="M12 8 Q12 3 22 3 Q32 3 32 8 L32 18 Q32 22 22 24 Q12 22 12 18 Z"
               fill="url(#implantGrad-${toothNumber})"
               stroke="#64748b"
@@ -84,7 +84,7 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
             {/* Pilier */}
             <rect x="18" y="24" width="8" height="8" fill="#78716c" stroke="#57534e" strokeWidth="0.5" />
             {/* Vis d'implant */}
-            <path 
+            <path
               d="M16 32 L28 32 L26 38 L18 38 Z M18 38 L26 38 L25 44 L19 44 Z M19 44 L25 44 L24 50 L20 50 Z M20 50 L24 50 L23 56 L21 56 Z M21 56 L23 56 L22 62 L22 62 Z"
               fill="#a8a29e"
               stroke="#78716c"
@@ -98,7 +98,7 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
         ) : (
           <g>
             {/* Vis d'implant */}
-            <path 
+            <path
               d="M16 38 L28 38 L26 32 L18 32 Z M18 32 L26 32 L25 26 L19 26 Z M19 26 L25 26 L24 20 L20 20 Z M20 20 L24 20 L23 14 L21 14 Z M21 14 L23 14 L22 8 L22 8 Z"
               fill="#a8a29e"
               stroke="#78716c"
@@ -111,7 +111,7 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
             {/* Pilier */}
             <rect x="18" y="38" width="8" height="8" fill="#78716c" stroke="#57534e" strokeWidth="0.5" />
             {/* Couronne prothétique */}
-            <path 
+            <path
               d="M12 62 Q12 67 22 67 Q32 67 32 62 L32 52 Q32 48 22 46 Q12 48 12 52 Z"
               fill={`url(#implantGrad-${toothNumber})`}
               stroke="#64748b"
@@ -126,12 +126,12 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
   // Molaires (3 racines maxillaires, 2 racines mandibulaires)
   if (isMolar) {
     return (
-      <svg 
-        width="48" 
-        height="75" 
-        viewBox="0 0 48 75"
+      <svg
+        width="52"
+        height="80"
+        viewBox="0 0 52 80"
         onClick={onClick}
-        style={{ 
+        style={{
           cursor: 'pointer',
           opacity: data.missing ? 0.3 : 1,
           filter: isSelected ? 'drop-shadow(0 0 6px #0ea5e9)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))'
@@ -139,88 +139,122 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       >
         <defs>
           <linearGradient id={`toothGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fefefe" />
-            <stop offset="30%" stopColor="#f8f9fa" />
-            <stop offset="100%" stopColor="#e9ecef" />
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="20%" stopColor="#fafafa" />
+            <stop offset="80%" stopColor="#f0f0f0" />
+            <stop offset="100%" stopColor="#e8e8e8" />
           </linearGradient>
           <linearGradient id={`rootGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fff5e6" />
-            <stop offset="100%" stopColor="#ffe4c4" />
+            <stop offset="0%" stopColor="#fef7ed" />
+            <stop offset="50%" stopColor="#fde4c8" />
+            <stop offset="100%" stopColor="#f5d5a8" />
+          </linearGradient>
+          <linearGradient id={`crownShade-${toothNumber}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.05)" />
           </linearGradient>
         </defs>
         {isUpper ? (
           <g>
-            {/* Racines (3 pour molaires maxillaires) */}
-            {/* Racine palatine */}
-            <path 
-              d="M22 28 Q20 35 21 50 Q21 58 23 62 Q25 58 25 50 Q26 35 24 28"
+            {/* Racines (3 pour molaires maxillaires) - anatomiquement réalistes */}
+            {/* Racine palatine (centrale, plus grosse) */}
+            <path
+              d="M23 32 C21 38, 20 48, 21 58 C21.5 65, 23 70, 26 72 C29 70, 30.5 65, 31 58 C32 48, 31 38, 29 32"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Racine mésio-vestibulaire */}
-            <path 
-              d="M12 30 Q10 38 9 48 Q8 56 10 60 Q13 56 14 48 Q15 38 14 30"
+            {/* Racine mésio-vestibulaire (gauche, courbée) */}
+            <path
+              d="M10 34 C8 40, 6 50, 7 60 C7.5 67, 10 73, 13 75 C15 72, 16 66, 16 58 C16 48, 14 40, 13 34"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Racine disto-vestibulaire */}
-            <path 
-              d="M34 30 Q36 38 37 48 Q38 56 36 60 Q33 56 32 48 Q31 38 32 30"
+            {/* Racine disto-vestibulaire (droite, plus courte) */}
+            <path
+              d="M39 34 C41 40, 43 48, 42 56 C41.5 63, 39 68, 36 70 C34 67, 33 62, 34 55 C35 47, 37 40, 38 34"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne */}
-            <path 
-              d="M6 8 Q6 3 14 2 L34 2 Q42 3 42 8 L42 24 Q42 32 36 34 L30 34 Q24 36 24 36 Q24 36 18 34 L12 34 Q6 32 6 24 Z"
+            {/* Couronne anatomique avec cuspides */}
+            <path
+              d="M5 6 C5 3, 10 2, 26 2 C42 2, 47 3, 47 6
+                 L47 10 C47 12, 45 14, 43 16 L41 18 C40 20, 40 22, 41 24
+                 L42 26 C43 28, 43 30, 42 32 L40 34
+                 C38 36, 32 37, 26 37 C20 37, 14 36, 12 34
+                 L10 32 C9 30, 9 28, 10 26 L11 24 C12 22, 12 20, 11 18
+                 L9 16 C7 14, 5 12, 5 10 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
-            {/* Sillons occlusaux */}
-            <path d="M14 12 Q24 18 34 12" fill="none" stroke="#cbd5e1" strokeWidth="1" />
-            <path d="M18 8 L18 16" fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
-            <path d="M30 8 L30 16" fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
-            <ellipse cx="24" cy="14" rx="4" ry="3" fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
+            {/* Surface occlusale avec détails anatomiques */}
+            <path
+              d="M12 8 C12 6, 18 5, 26 5 C34 5, 40 6, 40 8
+                 L40 18 C40 22, 36 24, 26 24 C16 24, 12 22, 12 18 Z"
+              fill={`url(#crownShade-${toothNumber})`}
+              stroke="none"
+            />
+            {/* Sillons occlusaux principaux */}
+            <path d="M15 10 Q20 15 26 12 Q32 9 37 14" fill="none" stroke="#d4d4d4" strokeWidth="1.2" />
+            <path d="M20 8 C20 12, 20 16, 22 18" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
+            <path d="M32 8 C32 12, 32 16, 30 18" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
+            {/* Fosse centrale */}
+            <ellipse cx="26" cy="13" rx="5" ry="3.5" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
+            <ellipse cx="26" cy="13" rx="2" ry="1.5" fill="#e8e8e8" stroke="none" />
           </g>
         ) : (
           <g>
             {/* Racines (2 pour molaires mandibulaires) */}
-            {/* Racine mésiale */}
-            <path 
-              d="M14 45 Q12 52 11 60 Q10 68 13 72 Q16 68 17 60 Q18 52 16 45"
+            {/* Racine mésiale (gauche, courbée) */}
+            <path
+              d="M12 48 C10 54, 8 62, 9 70 C9.5 75, 12 78, 15 79 C17 76, 18 72, 18 66 C18 58, 16 52, 15 48"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Racine distale */}
-            <path 
-              d="M32 45 Q34 52 35 60 Q36 68 33 72 Q30 68 29 60 Q28 52 30 45"
+            {/* Racine distale (droite) */}
+            <path
+              d="M37 48 C39 54, 41 62, 40 70 C39.5 75, 37 78, 34 79 C32 76, 31 72, 32 66 C33 58, 35 52, 36 48"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne */}
-            <path 
-              d="M6 67 Q6 72 14 73 L34 73 Q42 72 42 67 L42 51 Q42 43 36 41 L30 41 Q24 39 24 39 Q24 39 18 41 L12 41 Q6 43 6 51 Z"
+            {/* Couronne anatomique inversée */}
+            <path
+              d="M5 74 C5 77, 10 78, 26 78 C42 78, 47 77, 47 74
+                 L47 70 C47 68, 45 66, 43 64 L41 62 C40 60, 40 58, 41 56
+                 L42 54 C43 52, 43 50, 42 48 L40 46
+                 C38 44, 32 43, 26 43 C20 43, 14 44, 12 46
+                 L10 48 C9 50, 9 52, 10 54 L11 56 C12 58, 12 60, 11 62
+                 L9 64 C7 66, 5 68, 5 70 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
+            />
+            {/* Surface occlusale */}
+            <path
+              d="M12 72 C12 74, 18 75, 26 75 C34 75, 40 74, 40 72
+                 L40 62 C40 58, 36 56, 26 56 C16 56, 12 58, 12 62 Z"
+              fill={`url(#crownShade-${toothNumber})`}
+              stroke="none"
             />
             {/* Sillons occlusaux */}
-            <path d="M14 63 Q24 57 34 63" fill="none" stroke="#cbd5e1" strokeWidth="1" />
-            <path d="M18 67 L18 59" fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
-            <path d="M30 67 L30 59" fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
-            <ellipse cx="24" cy="61" rx="4" ry="3" fill="none" stroke="#cbd5e1" strokeWidth="0.8" />
+            <path d="M15 70 Q20 65 26 68 Q32 71 37 66" fill="none" stroke="#d4d4d4" strokeWidth="1.2" />
+            <path d="M20 72 C20 68, 20 64, 22 62" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
+            <path d="M32 72 C32 68, 32 64, 30 62" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
+            {/* Fosse centrale */}
+            <ellipse cx="26" cy="67" rx="5" ry="3.5" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
+            <ellipse cx="26" cy="67" rx="2" ry="1.5" fill="#e8e8e8" stroke="none" />
           </g>
         )}
         {data.missing && (
-          <line 
-            x1="3" y1={isUpper ? "2" : "73"} 
-            x2="45" y2={isUpper ? "65" : "5"} 
-            stroke="#ef4444" 
+          <line
+            x1="3" y1={isUpper ? "2" : "78"}
+            x2="49" y2={isUpper ? "75" : "5"}
+            stroke="#ef4444"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
@@ -228,16 +262,17 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       </svg>
     );
   }
-  
+
   // Prémolaires (1-2 racines)
   if (isPremolar) {
+    const isFirstPremolar = [14, 24, 44, 34].includes(toothNumber);
     return (
-      <svg 
-        width="40" 
-        height="70" 
-        viewBox="0 0 40 70"
+      <svg
+        width="42"
+        height="72"
+        viewBox="0 0 42 72"
         onClick={onClick}
-        style={{ 
+        style={{
           cursor: 'pointer',
           opacity: data.missing ? 0.3 : 1,
           filter: isSelected ? 'drop-shadow(0 0 6px #0ea5e9)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))'
@@ -245,69 +280,94 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       >
         <defs>
           <linearGradient id={`toothGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fefefe" />
-            <stop offset="30%" stopColor="#f8f9fa" />
-            <stop offset="100%" stopColor="#e9ecef" />
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="20%" stopColor="#fafafa" />
+            <stop offset="80%" stopColor="#f0f0f0" />
+            <stop offset="100%" stopColor="#e8e8e8" />
           </linearGradient>
           <linearGradient id={`rootGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fff5e6" />
-            <stop offset="100%" stopColor="#ffe4c4" />
+            <stop offset="0%" stopColor="#fef7ed" />
+            <stop offset="50%" stopColor="#fde4c8" />
+            <stop offset="100%" stopColor="#f5d5a8" />
           </linearGradient>
         </defs>
         {isUpper ? (
           <g>
-            {/* Racine (peut être bifide) */}
-            <path 
-              d="M16 28 Q14 38 13 50 Q12 60 16 66 Q20 62 20 50 Q20 38 18 28"
-              fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
-            />
-            <path 
-              d="M22 28 Q24 38 25 50 Q26 60 22 66 Q18 62 18 50 Q18 38 20 28"
-              fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
-            />
-            {/* Couronne */}
-            <path 
-              d="M8 6 Q8 2 20 2 Q32 2 32 6 L32 22 Q32 30 26 32 Q20 34 20 34 Q20 34 14 32 Q8 30 8 22 Z"
+            {/* Racines bifides pour premières prémolaires supérieures */}
+            {isFirstPremolar ? (
+              <>
+                <path
+                  d="M14 30 C12 38, 10 48, 11 58 C11.5 64, 14 68, 17 70 C19 66, 19 60, 18.5 52 C18 44, 16 36, 16 30"
+                  fill={`url(#rootGrad-${toothNumber})`}
+                  stroke="#c9a06c"
+                  strokeWidth="0.7"
+                />
+                <path
+                  d="M26 30 C28 38, 30 48, 29 58 C28.5 64, 26 68, 23 70 C21 66, 21 60, 21.5 52 C22 44, 24 36, 24 30"
+                  fill={`url(#rootGrad-${toothNumber})`}
+                  stroke="#c9a06c"
+                  strokeWidth="0.7"
+                />
+              </>
+            ) : (
+              <path
+                d="M18 30 C16 40, 14 52, 16 62 C17 67, 20 70, 21 70 C22 70, 25 67, 26 62 C28 52, 26 40, 24 30"
+                fill={`url(#rootGrad-${toothNumber})`}
+                stroke="#c9a06c"
+                strokeWidth="0.7"
+              />
+            )}
+            {/* Couronne avec deux cuspides */}
+            <path
+              d="M7 8 C7 4, 12 2, 21 2 C30 2, 35 4, 35 8
+                 L35 12 C35 15, 33 18, 30 20 L28 22 C27 24, 27 26, 28 28
+                 L29 30 C30 32, 29 34, 27 35
+                 C24 36, 18 36, 15 35 C13 34, 12 32, 13 30
+                 L14 28 C15 26, 15 24, 14 22 L12 20 C9 18, 7 15, 7 12 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
-            {/* Cuspides */}
-            <path d="M12 10 Q20 16 28 10" fill="none" stroke="#cbd5e1" strokeWidth="1" />
-            <circle cx="15" cy="12" r="2" fill="none" stroke="#cbd5e1" strokeWidth="0.6" />
-            <circle cx="25" cy="12" r="2" fill="none" stroke="#cbd5e1" strokeWidth="0.6" />
+            {/* Cuspides bicuspides */}
+            <path d="M12 10 C14 8, 17 7, 21 9 C25 7, 28 8, 30 10" fill="none" stroke="#d4d4d4" strokeWidth="1" />
+            <ellipse cx="14" cy="12" rx="3" ry="4" fill="none" stroke="#d4d4d4" strokeWidth="0.6" />
+            <ellipse cx="28" cy="12" rx="3" ry="4" fill="none" stroke="#d4d4d4" strokeWidth="0.6" />
+            {/* Sillon central */}
+            <path d="M21 6 L21 18" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
           </g>
         ) : (
           <g>
-            {/* Racine unique */}
-            <path 
-              d="M17 42 Q15 50 14 58 Q13 66 18 70 Q23 66 22 58 Q21 50 19 42"
+            {/* Racine unique pour prémolaires inférieures */}
+            <path
+              d="M18 42 C16 50, 14 58, 16 66 C17 70, 20 72, 21 72 C22 72, 25 70, 26 66 C28 58, 26 50, 24 42"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne */}
-            <path 
-              d="M8 64 Q8 68 20 68 Q32 68 32 64 L32 48 Q32 40 26 38 Q20 36 20 36 Q20 36 14 38 Q8 40 8 48 Z"
+            {/* Couronne inversée */}
+            <path
+              d="M7 64 C7 68, 12 70, 21 70 C30 70, 35 68, 35 64
+                 L35 60 C35 57, 33 54, 30 52 L28 50 C27 48, 27 46, 28 44
+                 L29 42 C30 40, 29 38, 27 37
+                 C24 36, 18 36, 15 37 C13 38, 12 40, 13 42
+                 L14 44 C15 46, 15 48, 14 50 L12 52 C9 54, 7 57, 7 60 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
             {/* Cuspides */}
-            <path d="M12 60 Q20 54 28 60" fill="none" stroke="#cbd5e1" strokeWidth="1" />
-            <circle cx="15" cy="58" r="2" fill="none" stroke="#cbd5e1" strokeWidth="0.6" />
-            <circle cx="25" cy="58" r="2" fill="none" stroke="#cbd5e1" strokeWidth="0.6" />
+            <path d="M12 62 C14 64, 17 65, 21 63 C25 65, 28 64, 30 62" fill="none" stroke="#d4d4d4" strokeWidth="1" />
+            <ellipse cx="14" cy="60" rx="3" ry="4" fill="none" stroke="#d4d4d4" strokeWidth="0.6" />
+            <ellipse cx="28" cy="60" rx="3" ry="4" fill="none" stroke="#d4d4d4" strokeWidth="0.6" />
+            {/* Sillon central */}
+            <path d="M21 66 L21 54" fill="none" stroke="#d4d4d4" strokeWidth="0.8" />
           </g>
         )}
         {data.missing && (
-          <line 
-            x1="5" y1={isUpper ? "2" : "68"} 
-            x2="35" y2={isUpper ? "68" : "2"} 
-            stroke="#ef4444" 
+          <line
+            x1="5" y1={isUpper ? "2" : "70"}
+            x2="37" y2={isUpper ? "70" : "2"}
+            stroke="#ef4444"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
@@ -315,16 +375,16 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       </svg>
     );
   }
-  
+
   // Canines (racine longue et pointue)
   if (isCanine) {
     return (
-      <svg 
-        width="36" 
-        height="75" 
-        viewBox="0 0 36 75"
+      <svg
+        width="38"
+        height="80"
+        viewBox="0 0 38 80"
         onClick={onClick}
-        style={{ 
+        style={{
           cursor: 'pointer',
           opacity: data.missing ? 0.3 : 1,
           filter: isSelected ? 'drop-shadow(0 0 6px #0ea5e9)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))'
@@ -332,59 +392,71 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       >
         <defs>
           <linearGradient id={`toothGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fefefe" />
-            <stop offset="30%" stopColor="#f8f9fa" />
-            <stop offset="100%" stopColor="#e9ecef" />
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="20%" stopColor="#fafafa" />
+            <stop offset="80%" stopColor="#f0f0f0" />
+            <stop offset="100%" stopColor="#e8e8e8" />
           </linearGradient>
           <linearGradient id={`rootGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fff5e6" />
-            <stop offset="100%" stopColor="#ffe4c4" />
+            <stop offset="0%" stopColor="#fef7ed" />
+            <stop offset="50%" stopColor="#fde4c8" />
+            <stop offset="100%" stopColor="#f5d5a8" />
           </linearGradient>
         </defs>
         {isUpper ? (
           <g>
-            {/* Racine longue */}
-            <path 
-              d="M14 28 Q12 42 11 55 Q10 68 18 73 Q26 68 25 55 Q24 42 22 28"
+            {/* Racine longue et robuste */}
+            <path
+              d="M15 32 C13 42, 11 54, 12 66 C12.5 72, 16 77, 19 78 C22 77, 25.5 72, 26 66 C27 54, 25 42, 23 32"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne pointue */}
-            <path 
-              d="M8 10 Q8 3 18 2 Q28 3 28 10 L28 22 Q28 28 23 30 L18 32 L13 30 Q8 28 8 22 Z"
+            {/* Couronne pointue avec cuspide proéminente */}
+            <path
+              d="M8 14 C8 8, 12 3, 19 3 C26 3, 30 8, 30 14
+                 L30 22 C30 26, 28 29, 25 31 L22 33
+                 C20 34, 18 34, 16 33 L13 31 C10 29, 8 26, 8 22 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
-            {/* Cuspide pointue */}
-            <path d="M12 14 L18 6 L24 14" fill="none" stroke="#cbd5e1" strokeWidth="1" />
+            {/* Cuspide pointue caractéristique */}
+            <path d="M12 18 L19 6 L26 18" fill="none" stroke="#d4d4d4" strokeWidth="1.2" />
+            {/* Crêtes marginales */}
+            <path d="M11 20 C14 22, 17 20, 19 16" fill="none" stroke="#e0e0e0" strokeWidth="0.6" />
+            <path d="M27 20 C24 22, 21 20, 19 16" fill="none" stroke="#e0e0e0" strokeWidth="0.6" />
           </g>
         ) : (
           <g>
-            {/* Racine longue */}
-            <path 
-              d="M14 47 Q12 55 11 63 Q10 71 18 73 Q26 71 25 63 Q24 55 22 47"
+            {/* Racine longue inférieure */}
+            <path
+              d="M15 48 C13 56, 11 66, 12 74 C12.5 77, 16 79, 19 79 C22 79, 25.5 77, 26 74 C27 66, 25 56, 23 48"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne */}
-            <path 
-              d="M8 65 Q8 72 18 73 Q28 72 28 65 L28 53 Q28 47 23 45 L18 43 L13 45 Q8 47 8 53 Z"
+            {/* Couronne inversée */}
+            <path
+              d="M8 66 C8 72, 12 77, 19 77 C26 77, 30 72, 30 66
+                 L30 58 C30 54, 28 51, 25 49 L22 47
+                 C20 46, 18 46, 16 47 L13 49 C10 51, 8 54, 8 58 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
             {/* Cuspide */}
-            <path d="M12 61 L18 69 L24 61" fill="none" stroke="#cbd5e1" strokeWidth="1" />
+            <path d="M12 62 L19 74 L26 62" fill="none" stroke="#d4d4d4" strokeWidth="1.2" />
+            {/* Crêtes marginales */}
+            <path d="M11 60 C14 58, 17 60, 19 64" fill="none" stroke="#e0e0e0" strokeWidth="0.6" />
+            <path d="M27 60 C24 58, 21 60, 19 64" fill="none" stroke="#e0e0e0" strokeWidth="0.6" />
           </g>
         )}
         {data.missing && (
-          <line 
-            x1="5" y1={isUpper ? "2" : "73"} 
-            x2="31" y2={isUpper ? "73" : "2"} 
-            stroke="#ef4444" 
+          <line
+            x1="5" y1={isUpper ? "3" : "77"}
+            x2="33" y2={isUpper ? "78" : "2"}
+            stroke="#ef4444"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
@@ -392,16 +464,16 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       </svg>
     );
   }
-  
+
   // Incisives centrales (plus larges)
   if (isCentralIncisor) {
     return (
-      <svg 
-        width="38" 
-        height="65" 
-        viewBox="0 0 38 65"
+      <svg
+        width="40"
+        height="68"
+        viewBox="0 0 40 68"
         onClick={onClick}
-        style={{ 
+        style={{
           cursor: 'pointer',
           opacity: data.missing ? 0.3 : 1,
           filter: isSelected ? 'drop-shadow(0 0 6px #0ea5e9)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))'
@@ -409,63 +481,70 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       >
         <defs>
           <linearGradient id={`toothGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fefefe" />
-            <stop offset="30%" stopColor="#f8f9fa" />
-            <stop offset="100%" stopColor="#e9ecef" />
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="20%" stopColor="#fafafa" />
+            <stop offset="80%" stopColor="#f0f0f0" />
+            <stop offset="100%" stopColor="#e8e8e8" />
           </linearGradient>
           <linearGradient id={`rootGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fff5e6" />
-            <stop offset="100%" stopColor="#ffe4c4" />
+            <stop offset="0%" stopColor="#fef7ed" />
+            <stop offset="50%" stopColor="#fde4c8" />
+            <stop offset="100%" stopColor="#f5d5a8" />
           </linearGradient>
         </defs>
         {isUpper ? (
           <g>
             {/* Racine conique */}
-            <path 
-              d="M15 26 Q13 36 12 46 Q11 56 19 62 Q27 56 26 46 Q25 36 23 26"
+            <path
+              d="M16 28 C14 38, 12 48, 14 58 C15 63, 18 66, 20 66 C22 66, 25 63, 26 58 C28 48, 26 38, 24 28"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne en pelle */}
-            <path 
-              d="M6 8 Q6 2 19 2 Q32 2 32 8 L32 20 Q32 28 26 28 L12 28 Q6 28 6 20 Z"
+            {/* Couronne en pelle - forme caractéristique incisive centrale */}
+            <path
+              d="M6 8 C6 4, 11 2, 20 2 C29 2, 34 4, 34 8
+                 L34 18 C34 24, 31 28, 26 29 L14 29 C9 28, 6 24, 6 18 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
-            {/* Bord incisif */}
-            <line x1="10" y1="6" x2="28" y2="6" stroke="#e2e8f0" strokeWidth="2" strokeLinecap="round" />
-            {/* Mamelons */}
-            <circle cx="13" cy="10" r="1.5" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="0.5" />
-            <circle cx="19" cy="10" r="1.5" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="0.5" />
-            <circle cx="25" cy="10" r="1.5" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="0.5" />
+            {/* Bord incisif avec mamelons */}
+            <line x1="10" y1="5" x2="30" y2="5" stroke="#e8e8e8" strokeWidth="2.5" strokeLinecap="round" />
+            {/* Mamelons (sur dents jeunes) */}
+            <circle cx="14" cy="9" r="2" fill="#f5f5f5" stroke="#e8e8e8" strokeWidth="0.5" />
+            <circle cx="20" cy="9" r="2" fill="#f5f5f5" stroke="#e8e8e8" strokeWidth="0.5" />
+            <circle cx="26" cy="9" r="2" fill="#f5f5f5" stroke="#e8e8e8" strokeWidth="0.5" />
+            {/* Ligne de développement */}
+            <path d="M13 12 L13 22" fill="none" stroke="#e8e8e8" strokeWidth="0.5" />
+            <path d="M27 12 L27 22" fill="none" stroke="#e8e8e8" strokeWidth="0.5" />
           </g>
         ) : (
           <g>
-            {/* Racine */}
-            <path 
-              d="M15 39 Q13 47 12 55 Q11 61 19 63 Q27 61 26 55 Q25 47 23 39"
+            {/* Racine plus fine */}
+            <path
+              d="M17 40 C15 48, 14 56, 16 62 C17 65, 19 66, 20 66 C21 66, 23 65, 24 62 C26 56, 25 48, 23 40"
               fill={`url(#rootGrad-${toothNumber})`}
-              stroke="#d4a574"
-              strokeWidth="0.8"
+              stroke="#c9a06c"
+              strokeWidth="0.7"
             />
-            {/* Couronne */}
-            <path 
-              d="M6 57 Q6 63 19 63 Q32 63 32 57 L32 45 Q32 37 26 37 L12 37 Q6 37 6 45 Z"
+            {/* Couronne inversée - incisive mandibulaire plus étroite */}
+            <path
+              d="M8 60 C8 64, 12 66, 20 66 C28 66, 32 64, 32 60
+                 L32 50 C32 44, 29 40, 24 39 L16 39 C11 40, 8 44, 8 50 Z"
               fill={`url(#toothGrad-${toothNumber})`}
-              stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-              strokeWidth={isSelected ? 2 : 1.2}
+              stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+              strokeWidth={isSelected ? 2 : 1}
             />
             {/* Bord incisif */}
-            <line x1="10" y1="59" x2="28" y2="59" stroke="#e2e8f0" strokeWidth="2" strokeLinecap="round" />
+            <line x1="11" y1="63" x2="29" y2="63" stroke="#e8e8e8" strokeWidth="2" strokeLinecap="round" />
           </g>
         )}
         {data.missing && (
-          <line 
-            x1="3" y1={isUpper ? "2" : "63"} 
-            x2="35" y2={isUpper ? "63" : "2"} 
-            stroke="#ef4444" 
+          <line
+            x1="4" y1={isUpper ? "2" : "66"}
+            x2="36" y2={isUpper ? "66" : "2"}
+            stroke="#ef4444"
             strokeWidth="2.5"
             strokeLinecap="round"
           />
@@ -473,15 +552,15 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
       </svg>
     );
   }
-  
-  // Incisives latérales (plus petites)
+
+  // Incisives latérales (plus petites et arrondies)
   return (
-    <svg 
-      width="32" 
-      height="62" 
-      viewBox="0 0 32 62"
+    <svg
+      width="34"
+      height="65"
+      viewBox="0 0 34 65"
       onClick={onClick}
-      style={{ 
+      style={{
         cursor: 'pointer',
         opacity: data.missing ? 0.3 : 1,
         filter: isSelected ? 'drop-shadow(0 0 6px #0ea5e9)' : 'drop-shadow(0 2px 3px rgba(0,0,0,0.1))'
@@ -489,59 +568,65 @@ const ToothSVG = ({ toothNumber, isUpper, data, isSelected, onClick }) => {
     >
       <defs>
         <linearGradient id={`toothGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fefefe" />
-          <stop offset="30%" stopColor="#f8f9fa" />
-          <stop offset="100%" stopColor="#e9ecef" />
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="20%" stopColor="#fafafa" />
+          <stop offset="80%" stopColor="#f0f0f0" />
+          <stop offset="100%" stopColor="#e8e8e8" />
         </linearGradient>
         <linearGradient id={`rootGrad-${toothNumber}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fff5e6" />
-          <stop offset="100%" stopColor="#ffe4c4" />
+          <stop offset="0%" stopColor="#fef7ed" />
+          <stop offset="50%" stopColor="#fde4c8" />
+          <stop offset="100%" stopColor="#f5d5a8" />
         </linearGradient>
       </defs>
       {isUpper ? (
         <g>
-          {/* Racine */}
-          <path 
-            d="M13 24 Q11 34 10 44 Q9 54 16 60 Q23 54 22 44 Q21 34 19 24"
+          {/* Racine courbée distalement */}
+          <path
+            d="M14 26 C12 34, 10 44, 12 54 C13 59, 16 63, 17 63 C18 63, 21 59, 22 54 C24 44, 22 34, 20 26"
             fill={`url(#rootGrad-${toothNumber})`}
-            stroke="#d4a574"
-            strokeWidth="0.8"
+            stroke="#c9a06c"
+            strokeWidth="0.7"
           />
           {/* Couronne plus petite et arrondie */}
-          <path 
-            d="M6 8 Q6 2 16 2 Q26 2 26 8 L26 18 Q26 26 21 26 L11 26 Q6 26 6 18 Z"
+          <path
+            d="M6 8 C6 4, 10 2, 17 2 C24 2, 28 4, 28 8
+               L28 16 C28 22, 25 26, 21 27 L13 27 C9 26, 6 22, 6 16 Z"
             fill={`url(#toothGrad-${toothNumber})`}
-            stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-            strokeWidth={isSelected ? 2 : 1.2}
+            stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+            strokeWidth={isSelected ? 2 : 1}
           />
           {/* Bord incisif */}
-          <line x1="9" y1="6" x2="23" y2="6" stroke="#e2e8f0" strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="9" y1="5" x2="25" y2="5" stroke="#e8e8e8" strokeWidth="2" strokeLinecap="round" />
+          {/* Cingulum (proéminence palatine) */}
+          <ellipse cx="17" cy="20" rx="4" ry="3" fill="none" stroke="#e8e8e8" strokeWidth="0.5" />
         </g>
       ) : (
         <g>
           {/* Racine */}
-          <path 
-            d="M13 38 Q11 46 10 52 Q9 58 16 60 Q23 58 22 52 Q21 46 19 38"
+          <path
+            d="M14 38 C12 46, 11 52, 13 58 C14 61, 16 63, 17 63 C18 63, 20 61, 21 58 C23 52, 22 46, 20 38"
             fill={`url(#rootGrad-${toothNumber})`}
-            stroke="#d4a574"
-            strokeWidth="0.8"
+            stroke="#c9a06c"
+            strokeWidth="0.7"
           />
           {/* Couronne */}
-          <path 
-            d="M6 54 Q6 60 16 60 Q26 60 26 54 L26 44 Q26 36 21 36 L11 36 Q6 36 6 44 Z"
+          <path
+            d="M6 57 C6 61, 10 63, 17 63 C24 63, 28 61, 28 57
+               L28 49 C28 43, 25 39, 21 38 L13 38 C9 39, 6 43, 6 49 Z"
             fill={`url(#toothGrad-${toothNumber})`}
-            stroke={isSelected ? '#0ea5e9' : '#94a3b8'}
-            strokeWidth={isSelected ? 2 : 1.2}
+            stroke={isSelected ? '#0ea5e9' : '#a0a0a0'}
+            strokeWidth={isSelected ? 2 : 1}
           />
           {/* Bord incisif */}
-          <line x1="9" y1="56" x2="23" y2="56" stroke="#e2e8f0" strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="9" y1="60" x2="25" y2="60" stroke="#e8e8e8" strokeWidth="1.5" strokeLinecap="round" />
         </g>
       )}
       {data.missing && (
-        <line 
-          x1="3" y1={isUpper ? "2" : "60"} 
-          x2="29" y2={isUpper ? "60" : "2"} 
-          stroke="#ef4444" 
+        <line
+          x1="4" y1={isUpper ? "2" : "63"}
+          x2="30" y2={isUpper ? "63" : "2"}
+          stroke="#ef4444"
           strokeWidth="2.5"
           strokeLinecap="round"
         />
