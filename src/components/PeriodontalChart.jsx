@@ -1273,7 +1273,7 @@ export default function PeriodontalChart() {
 
   // Gmail OAuth configuration
   const GMAIL_CLIENT_ID = '77466324556-s2siqrgbdj9qt0hu45s9oqsa4n5650in.apps.googleusercontent.com';
-  const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.send';
+  const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.compose';
 
   // Lecture des paramètres URL au chargement
   useEffect(() => {
@@ -1967,7 +1967,7 @@ export default function PeriodontalChart() {
     }
   };
 
-  // Envoi via Gmail avec pièce jointe
+  // Créer un brouillon Gmail avec pièce jointe et ouvrir Gmail
   const shareViaGmail = async () => {
     if (!pdfBlob) {
       setGmailError('PDF non disponible. Veuillez réessayer.');
@@ -1976,11 +1976,6 @@ export default function PeriodontalChart() {
 
     if (!window.google?.accounts?.oauth2) {
       setGmailError('Service Gmail non disponible. Veuillez rafraîchir la page.');
-      return;
-    }
-
-    if (!gmailRecipient) {
-      setShowGmailForm(true);
       return;
     }
 
@@ -1999,15 +1994,18 @@ export default function PeriodontalChart() {
           }
 
           try {
-            await sendGmailWithAttachment(tokenResponse.access_token);
+            const result = await createGmailDraft(tokenResponse.access_token);
             setGmailLoading(false);
-            alert('Email envoyé avec succès !');
             setShowShareModal(false);
             setShowGmailForm(false);
             setGmailRecipient('');
+
+            // Ouvrir Gmail avec le brouillon prêt à envoyer
+            const gmailUrl = `https://mail.google.com/mail/u/0/#drafts?compose=${result.message.id}`;
+            window.open(gmailUrl, '_blank');
           } catch (err) {
-            console.error('Gmail send error:', err);
-            setGmailError('Erreur lors de l\'envoi: ' + err.message);
+            console.error('Gmail draft error:', err);
+            setGmailError('Erreur lors de la création du brouillon: ' + err.message);
             setGmailLoading(false);
           }
         }
@@ -2021,13 +2019,14 @@ export default function PeriodontalChart() {
     }
   };
 
-  const sendGmailWithAttachment = async (accessToken) => {
-    if (!gmailRecipient) {
-      throw new Error('Adresse email du destinataire requise');
-    }
-
+  const createGmailDraft = async (accessToken) => {
     const subject = `Charting Parodontal - ${getPatientName()}`;
-    const body = `Bonjour,\n\nVeuillez trouver ci-joint le charting parodontal de ${getPatientName()}.\n\nCordialement`;
+    const toEmail = gmailRecipient || '';
+    const body = `Bonjour,
+
+Veuillez trouver ci-joint le charting parodontal de ${getPatientName()}.
+
+Cordialement`;
 
     // Convert blob to base64
     const arrayBuffer = await pdfBlob.arrayBuffer();
@@ -2037,11 +2036,19 @@ export default function PeriodontalChart() {
 
     // Create MIME message
     const boundary = 'boundary_' + Date.now();
-    const mimeMessage = [
-      `To: ${gmailRecipient}`,
-      `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+    const mimeLines = [
       'MIME-Version: 1.0',
+      `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
       `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    ];
+
+    // Add To header only if recipient is specified
+    if (toEmail) {
+      mimeLines.splice(1, 0, `To: ${toEmail}`);
+    }
+
+    const mimeMessage = [
+      ...mimeLines,
       '',
       `--${boundary}`,
       'Content-Type: text/plain; charset=UTF-8',
@@ -2065,14 +2072,18 @@ export default function PeriodontalChart() {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    // Send via Gmail API
-    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    // Create draft via Gmail API
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ raw: encodedMessage })
+      body: JSON.stringify({
+        message: {
+          raw: encodedMessage
+        }
+      })
     });
 
     if (!response.ok) {
@@ -3051,43 +3062,7 @@ export default function PeriodontalChart() {
               )}
 
               <div className="space-y-3">
-                {/* Gmail email input form */}
-                {showGmailForm && (
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email du destinataire
-                    </label>
-                    <input
-                      type="email"
-                      value={gmailRecipient}
-                      onChange={(e) => setGmailRecipient(e.target.value)}
-                      placeholder="exemple@email.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 mb-3"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          if (gmailRecipient) {
-                            setShowGmailForm(false);
-                            shareViaGmail();
-                          }
-                        }}
-                        disabled={!gmailRecipient}
-                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Envoyer
-                      </button>
-                      <button
-                        onClick={() => setShowGmailForm(false)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Gmail - avec pièce jointe via OAuth */}
+                {/* Gmail - Crée un brouillon avec pièce jointe */}
                 <button
                   onClick={shareViaGmail}
                   disabled={gmailLoading}
@@ -3103,8 +3078,8 @@ export default function PeriodontalChart() {
                     )}
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="text-red-700 font-medium block">Envoyer via Gmail</span>
-                    <span className="text-red-500 text-xs">Avec pièce jointe PDF</span>
+                    <span className="text-red-700 font-medium block">Ouvrir dans Gmail</span>
+                    <span className="text-red-500 text-xs">Brouillon avec PDF joint, prêt à envoyer</span>
                   </div>
                 </button>
 
