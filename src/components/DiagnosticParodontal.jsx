@@ -10,8 +10,8 @@ const CAT_TEXTS = {
   sevrageTabac: "Dans le cadre de votre pathologie gingivale un rdv avec un tabacologue est conseillé. Renseignez-vous auprès de votre médecin traitant.",
   substitutionMed: "Il est conseillé de prendre rdv avec le professionnel de santé qui vous a prescrit : XXXX. Ce médicament est responsable de l'hyperplasie/hypertrophie gingivale. Une substitution médicamenteuse est éventuellement possible.",
   adressage: "Suite à l'examen clinique, veuillez trouver ci-joint un courrier d'adressage à un confrère/consœur compétent (médecin traitant, endocrinologue, cardiologue, spécialiste en dermatologie buccale).",
-  suiviParo: "Il est recommandé de venir en rdv de contrôle dans XXX mois puis tous les XXX la première année.",
-  chirurgie: "Suite à la réévaluation une thérapeutique chirurgicale est recommandée au niveau de XXXX.",
+  suiviParo: "Il est recommandé de venir en rdv de contrôle {frequency} fois par an.",
+  chirurgie: "Suite à la réévaluation une thérapeutique chirurgicale est potentiellement recommandée au niveau de {site}.",
   prothese: "Une réhabilitation prothétique est recommandée. Nous vous invitons à prendre rdv avec votre praticien traitant.",
   odf: "Une réhabilitation orthodontique est recommandée. Nous vous invitons à prendre rdv avec votre praticien traitant. Un suivi parodontal régulier est fortement conseillé pendant toute la durée du traitement orthodontique."
 };
@@ -201,6 +201,9 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
     defautCrestal: '',
     rehabilitationComplexe: null,
     etendue: '',
+    etendueType: '', // 'localisee' or 'generalisee'
+    distributionIncisives: false,
+    distributionMolaires: false,
     diagnosticType: '',
     gingiviteDetails: {
       induitePlaque: null,
@@ -219,7 +222,9 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
       substitutionMed: false,
       adressage: false,
       suiviParo: false,
+      suiviParoFrequency: 2, // 1, 2, 3, or 4 times per year
       chirurgie: false,
+      chirurgieSite: '', // Site for surgical therapy
       prothese: false,
       odf: false
     },
@@ -271,10 +276,16 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
         suggestedStade = 1; // Stade 1 si poches 1-4mm
       }
 
+      // Auto-fill etendue based on percentage of teeth with deep pockets
+      const suggestedEtendueType = stats.percentageDeepPockets >= 30 ? 'generalisee' : 'localisee';
+
       setDiagnostic(prev => ({
         ...prev,
         profondeurPochesMax: maxDepth,
-        stade: prev.stade || suggestedStade // Ne pas écraser si déjà défini
+        stade: prev.stade || suggestedStade, // Ne pas écraser si déjà défini
+        etendueType: prev.etendueType || suggestedEtendueType,
+        distributionIncisives: prev.distributionIncisives || stats.hasAffectedIncisives,
+        distributionMolaires: prev.distributionMolaires || stats.hasAffectedMolaires
       }));
     }
   }, [stats]);
@@ -285,8 +296,15 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
 
     if (diagnostic.diagnosticType === 'parodontite') {
       conclusion.push(`Diagnostic : Parodontite Stade ${diagnostic.stade} Grade ${diagnostic.grade}`);
-      if (diagnostic.etendue) {
-        conclusion.push(`Etendue : ${diagnostic.etendue === 'generalisee' ? 'Generalisee' : diagnostic.etendue === 'localisee' ? 'Localisee' : 'Distribution molaires/incisives'}`);
+      if (diagnostic.etendueType) {
+        let etendueText = diagnostic.etendueType === 'generalisee' ? 'Generalisee (>=30%)' : 'Localisee (<30%)';
+        const distributions = [];
+        if (diagnostic.distributionIncisives) distributions.push('Incisives');
+        if (diagnostic.distributionMolaires) distributions.push('Molaires');
+        if (distributions.length > 0) {
+          etendueText += ` - Distribution: ${distributions.join(' et ')}`;
+        }
+        conclusion.push(`Etendue : ${etendueText}`);
       }
     } else if (diagnostic.diagnosticType === 'gingivite_plaque') {
       conclusion.push("Diagnostic : Gingivite induite par la plaque");
@@ -301,8 +319,14 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
     if (diagnostic.cat.detartrage) conclusion.push(`- ${CAT_TEXTS.detartrage}`);
     if (diagnostic.cat.surfacage) conclusion.push(`- ${CAT_TEXTS.surfacage}`);
     if (diagnostic.cat.sevrageTabac) conclusion.push(`- ${CAT_TEXTS.sevrageTabac}`);
-    if (diagnostic.cat.suiviParo) conclusion.push(`- ${CAT_TEXTS.suiviParo}`);
-    if (diagnostic.cat.chirurgie) conclusion.push(`- ${CAT_TEXTS.chirurgie}`);
+    if (diagnostic.cat.suiviParo) {
+      const suiviText = CAT_TEXTS.suiviParo.replace('{frequency}', diagnostic.cat.suiviParoFrequency);
+      conclusion.push(`- ${suiviText}`);
+    }
+    if (diagnostic.cat.chirurgie) {
+      const chirurgieText = CAT_TEXTS.chirurgie.replace('{site}', diagnostic.cat.chirurgieSite || 'sites concernés');
+      conclusion.push(`- ${chirurgieText}`);
+    }
     if (diagnostic.cat.prothese) conclusion.push(`- ${CAT_TEXTS.prothese}`);
     if (diagnostic.cat.odf) conclusion.push(`- ${CAT_TEXTS.odf}`);
 
@@ -974,16 +998,97 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
           />
         </div>
 
-        <MultiSelect
-          label="Etendue"
-          options={[
-            { value: 'localisee', label: 'Localisee (<30%)' },
-            { value: 'generalisee', label: 'Generalisee (>=30%)' },
-            { value: 'distribution_molaires_incisives', label: 'Distribution molaires/incisives' }
-          ]}
-          value={diagnostic.etendue}
-          onChange={(v) => updateField('etendue', v)}
-        />
+        {/* Section Etendue */}
+        <div className="bg-white border-2 border-violet-200 rounded-xl p-4 space-y-4">
+          <h4 className="font-semibold text-violet-800 flex items-center gap-2">
+            Etendue
+            {stats && stats.percentageDeepPockets > 0 && (
+              <span className="text-xs font-normal bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">
+                {stats.teethWithDeepPockets?.length || 0} dents atteintes ({stats.percentageDeepPockets?.toFixed(1)}%)
+              </span>
+            )}
+          </h4>
+
+          {/* Localisée / Généralisée */}
+          <div className="space-y-2">
+            <label className="font-medium text-slate-700">Type d'etendue</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => updateField('etendueType', 'localisee')}
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all border-2 ${
+                  diagnostic.etendueType === 'localisee'
+                    ? 'bg-green-100 border-green-500 text-green-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <div className="text-lg">Localisee</div>
+                <div className="text-xs opacity-70">&lt;30% des dents</div>
+              </button>
+              <button
+                onClick={() => updateField('etendueType', 'generalisee')}
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all border-2 ${
+                  diagnostic.etendueType === 'generalisee'
+                    ? 'bg-red-100 border-red-500 text-red-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <div className="text-lg">Generalisee</div>
+                <div className="text-xs opacity-70">&ge;30% des dents</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Distribution */}
+          <div className="space-y-2">
+            <label className="font-medium text-slate-700">Distribution</label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => updateField('distributionIncisives', !diagnostic.distributionIncisives)}
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all border-2 flex items-center justify-center gap-2 ${
+                  diagnostic.distributionIncisives
+                    ? 'bg-sky-100 border-sky-500 text-sky-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                  diagnostic.distributionIncisives ? 'bg-sky-500 border-sky-500' : 'border-slate-300'
+                }`}>
+                  {diagnostic.distributionIncisives && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span>Incisives</span>
+                {stats?.hasAffectedIncisives && (
+                  <span className="text-xs bg-sky-200 text-sky-700 px-1.5 py-0.5 rounded">auto</span>
+                )}
+              </button>
+              <button
+                onClick={() => updateField('distributionMolaires', !diagnostic.distributionMolaires)}
+                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all border-2 flex items-center justify-center gap-2 ${
+                  diagnostic.distributionMolaires
+                    ? 'bg-amber-100 border-amber-500 text-amber-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                  diagnostic.distributionMolaires ? 'bg-amber-500 border-amber-500' : 'border-slate-300'
+                }`}>
+                  {diagnostic.distributionMolaires && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span>Molaires</span>
+                {stats?.hasAffectedMolaires && (
+                  <span className="text-xs bg-amber-200 text-amber-700 px-1.5 py-0.5 rounded">auto</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Stade et Grade */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
@@ -1086,8 +1191,6 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
             { key: 'detartrage', label: 'Detartrage supra et sous-gingival', text: CAT_TEXTS.detartrage },
             { key: 'surfacage', label: 'Debridement sous-gingival / Surfacage', text: CAT_TEXTS.surfacage },
             { key: 'sevrageTabac', label: 'Sevrage tabagique', text: CAT_TEXTS.sevrageTabac },
-            { key: 'suiviParo', label: 'Suivi parodontal', text: CAT_TEXTS.suiviParo },
-            { key: 'chirurgie', label: 'Therapeutique chirurgicale', text: CAT_TEXTS.chirurgie },
             { key: 'prothese', label: 'Rehabilitation prothetique', text: CAT_TEXTS.prothese },
             { key: 'odf', label: 'Rehabilitation orthodontique', text: CAT_TEXTS.odf }
           ].map(item => (
@@ -1119,6 +1222,106 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
               )}
             </div>
           ))}
+
+          {/* Suivi Parodontal with frequency selector */}
+          <div
+            className={`p-3 rounded-xl border-2 transition-all ${
+              diagnostic.cat.suiviParo
+                ? 'bg-green-50 border-green-300'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => updateField('cat.suiviParo', !diagnostic.cat.suiviParo)}
+            >
+              <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center ${
+                diagnostic.cat.suiviParo ? 'bg-green-500 border-green-500' : 'border-slate-300'
+              }`}>
+                {diagnostic.cat.suiviParo && (
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className={`font-medium ${diagnostic.cat.suiviParo ? 'text-green-800' : 'text-slate-700'}`}>
+                Suivi parodontal
+              </span>
+            </div>
+            {diagnostic.cat.suiviParo && (
+              <div className="mt-3 pl-9 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Frequence:</span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map(freq => (
+                      <button
+                        key={freq}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateField('cat.suiviParoFrequency', freq);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          diagnostic.cat.suiviParoFrequency === freq
+                            ? 'bg-green-500 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {freq}x/an
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600">
+                  {CAT_TEXTS.suiviParo.replace('{frequency}', diagnostic.cat.suiviParoFrequency)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Therapeutique chirurgicale with site field */}
+          <div
+            className={`p-3 rounded-xl border-2 transition-all ${
+              diagnostic.cat.chirurgie
+                ? 'bg-red-50 border-red-300'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => updateField('cat.chirurgie', !diagnostic.cat.chirurgie)}
+            >
+              <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center ${
+                diagnostic.cat.chirurgie ? 'bg-red-500 border-red-500' : 'border-slate-300'
+              }`}>
+                {diagnostic.cat.chirurgie && (
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className={`font-medium ${diagnostic.cat.chirurgie ? 'text-red-800' : 'text-slate-700'}`}>
+                Therapeutique chirurgicale (potentiellement recommandee)
+              </span>
+            </div>
+            {diagnostic.cat.chirurgie && (
+              <div className="mt-3 pl-9 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Site:</span>
+                  <input
+                    type="text"
+                    value={diagnostic.cat.chirurgieSite}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => updateField('cat.chirurgieSite', e.target.value)}
+                    placeholder="Ex: 16, 17, secteur maxillaire droit..."
+                    className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+                <p className="text-sm text-slate-600">
+                  {CAT_TEXTS.chirurgie.replace('{site}', diagnostic.cat.chirurgieSite || 'sites concernes')}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-4">

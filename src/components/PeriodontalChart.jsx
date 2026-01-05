@@ -5,6 +5,7 @@ import Peer from 'peerjs';
 import QRCode from 'qrcode';
 import { QRCodeSVG } from 'qrcode.react';
 import DiagnosticParodontal from './DiagnosticParodontal';
+import FichePatient from './FichePatient';
 
 const PDF_SHARE_URL = window.location.origin + window.location.pathname;
 
@@ -1323,11 +1324,18 @@ export default function PeriodontalChart() {
     let presentTeeth = 0;
     let maxPocketDepth = 0;
 
+    // Track teeth with pocket depth > 4mm for etendue calculation
+    const teethWithDeepPockets = [];
+    const incisives = [12, 11, 21, 22, 42, 41, 31, 32]; // Incisives
+    const molaires = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38]; // Molaires
+
     [...TEETH_UPPER, ...TEETH_LOWER].forEach(tooth => {
       const data = teethData[tooth];
       if (data.missing) return;
 
       presentTeeth++;
+      let toothHasDeepPocket = false;
+
       ['buccal', 'lingual'].forEach(surface => {
         data[surface].probing.forEach((p, i) => {
           totalSites++;
@@ -1336,9 +1344,20 @@ export default function PeriodontalChart() {
           if (p >= 5) deepPockets++;
           else if (p >= 4) moderatePockets++;
           if (p > maxPocketDepth) maxPocketDepth = p;
+          if (p > 4 && !toothHasDeepPocket) {
+            toothHasDeepPocket = true;
+            teethWithDeepPockets.push(tooth);
+          }
         });
       });
     });
+
+    // Calculate percentage of teeth with deep pockets (>4mm)
+    const percentageDeepPockets = presentTeeth > 0 ? (teethWithDeepPockets.length / presentTeeth) * 100 : 0;
+
+    // Determine distribution (incisives/molaires)
+    const affectedIncisives = teethWithDeepPockets.filter(t => incisives.includes(t));
+    const affectedMolaires = teethWithDeepPockets.filter(t => molaires.includes(t));
 
     return {
       totalTeeth: presentTeeth,
@@ -1347,7 +1366,13 @@ export default function PeriodontalChart() {
       plaqueIndex: totalSites > 0 ? ((plaqueSites / totalSites) * 100).toFixed(1) : 0,
       deepPockets,
       moderatePockets,
-      maxPocketDepth
+      maxPocketDepth,
+      teethWithDeepPockets,
+      percentageDeepPockets,
+      hasAffectedIncisives: affectedIncisives.length > 0,
+      hasAffectedMolaires: affectedMolaires.length > 0,
+      affectedIncisives,
+      affectedMolaires
     };
   }, [teethData]);
   
@@ -2327,6 +2352,16 @@ Cordialement`;
           >
             Photographies
           </button>
+          <button
+            onClick={() => setActiveView('fichePatient')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'fichePatient'
+                ? 'bg-cyan-500 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Fiche Patient
+          </button>
         </div>
         
         {activeView === 'chart' ? (
@@ -2695,7 +2730,7 @@ Cordialement`;
               </div>
             )}
           </div>
-        ) : (
+        ) : activeView === 'photos' ? (
           /* Vue photographies */
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">Photographies</h2>
@@ -2908,7 +2943,12 @@ Cordialement`;
               </div>
             )}
           </div>
-        )}
+        ) : activeView === 'fichePatient' ? (
+          /* Vue Fiche Patient */
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
+            <FichePatient patientInfo={patientInfo} contextInfo={contextInfo} />
+          </div>
+        ) : null}
 
         {/* Légende */}
         <div className="mt-6 bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
