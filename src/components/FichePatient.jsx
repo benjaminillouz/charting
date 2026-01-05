@@ -14,112 +14,252 @@ export default function FichePatient({ patientInfo, contextInfo }) {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 15;
+    const contentWidth = pageWidth - 2 * margin;
     let yPos = 0;
 
-    // En-tete avec fond colore
-    pdf.setFillColor(0, 75, 99); // Dark teal
-    pdf.rect(0, 0, pageWidth, 35, 'F');
-
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(18);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Fiche Patient - Soins de Parodontie', margin, 15);
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(contextInfo?.centreNom || 'HelloParo', margin, 24);
-
-    const praticienText = contextInfo?.praticienNom ? 'Dr ' + contextInfo.praticienNom : '';
-    if (praticienText) {
-      pdf.text(praticienText, margin, 31);
-    }
-
-    yPos = 45;
-
-    // Informations patient
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFillColor(248, 250, 252);
-    pdf.rect(margin, yPos, pageWidth - 2 * margin, 20, 'F');
-    pdf.setDrawColor(226, 232, 240);
-    pdf.rect(margin, yPos, pageWidth - 2 * margin, 20, 'S');
-
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Informations Patient', margin + 5, yPos + 7);
-
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-    const patientFullName = ((patientInfo?.firstName || '') + ' ' + (patientInfo?.name || '')).trim() || 'Non renseigne';
-    pdf.text('Patient: ' + patientFullName, margin + 5, yPos + 15);
-    pdf.text('Date: ' + (patientInfo?.date || new Date().toLocaleDateString('fr-FR')), pageWidth - margin - 40, yPos + 15);
-
-    yPos += 30;
-
-    // Titre section
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(0, 75, 99);
-    pdf.text('Informations sur les soins de parodontie', margin, yPos);
-    yPos += 10;
-
-    // Contenu informatif
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(0, 0, 0);
-
-    const content = [
-      {
-        title: "Qu'est-ce que la parodontie ?",
-        text: "La parodontie est la specialite dentaire qui traite les maladies des tissus de soutien des dents : la gencive, l'os alveolaire et le ligament parodontal. Ces maladies, appelees maladies parodontales, comprennent la gingivite et la parodontite."
-      },
-      {
-        title: "Les signes d'alerte",
-        text: "- Saignement des gencives lors du brossage ou spontane\n- Gencives rouges, gonflees ou sensibles\n- Mauvaise haleine persistante\n- Dents qui semblent plus longues (recession gingivale)\n- Dents mobiles ou qui se deplacent\n- Espaces qui apparaissent entre les dents"
-      },
-      {
-        title: "L'importance du traitement",
-        text: "Sans traitement, la parodontite peut entrainer la perte des dents. De plus, les bacteries responsables peuvent avoir des consequences sur la sante generale : maladies cardiovasculaires, diabete, complications pendant la grossesse."
-      },
-      {
-        title: "Les etapes du traitement",
-        text: "1. Enseignement a l'hygiene bucco-dentaire personnalise\n2. Detartrage supra et sous-gingival\n3. Surfacage radiculaire si necessaire\n4. Reevaluation apres cicatrisation\n5. Chirurgie parodontale si indiquee\n6. Suivi regulier (maintenance parodontale)"
-      },
-      {
-        title: "Conseils d'hygiene bucco-dentaire",
-        text: "- Brossez-vous les dents 2 a 3 fois par jour pendant 2 minutes\n- Utilisez une brosse a dents souple ou electrique\n- Nettoyez les espaces interdentaires quotidiennement\n- Utilisez des brossettes interdentaires adaptees\n- Rincez-vous la bouche apres les repas si le brossage est impossible"
-      },
-      {
-        title: "Le suivi parodontal",
-        text: "Apres le traitement actif, un suivi regulier est essentiel pour maintenir les resultats obtenus. La frequence des visites de maintenance sera determinee en fonction de votre situation clinique (generalement 2 a 4 fois par an)."
-      }
-    ];
-
-    content.forEach(section => {
-      // Verifier s'il faut passer a une nouvelle page
-      if (yPos > pageHeight - 40) {
+    const addNewPageIfNeeded = (requiredSpace = 20) => {
+      if (yPos > pageHeight - requiredSpace) {
         pdf.addPage();
         yPos = 20;
+        return true;
       }
+      return false;
+    };
 
+    const addTitle = (text, size = 14, color = [0, 75, 99]) => {
+      addNewPageIfNeeded(15);
+      pdf.setFontSize(size);
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(11);
-      pdf.setTextColor(0, 75, 99);
-      pdf.text(section.title, margin, yPos);
-      yPos += 6;
+      pdf.setTextColor(...color);
+      pdf.text(text, margin, yPos);
+      yPos += size * 0.5 + 2;
+    };
 
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
+    const addSubtitle = (text, size = 11) => {
+      addNewPageIfNeeded(12);
+      pdf.setFontSize(size);
+      pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(60, 60, 60);
-      const splitText = pdf.splitTextToSize(section.text, pageWidth - 2 * margin);
-      pdf.text(splitText, margin, yPos);
-      yPos += splitText.length * 4 + 8;
-    });
+      pdf.text(text, margin, yPos);
+      yPos += size * 0.4 + 2;
+    };
 
-    // Pied de page
-    pdf.setFontSize(7);
-    pdf.setTextColor(128, 128, 128);
-    const dateStr = new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR');
-    pdf.text('Document genere le ' + dateStr + ' - HelloParo', margin, pageHeight - 8);
+    const addParagraph = (text, indent = 0) => {
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(50, 50, 50);
+      const lines = pdf.splitTextToSize(text, contentWidth - indent);
+      lines.forEach(line => {
+        addNewPageIfNeeded(6);
+        pdf.text(line, margin + indent, yPos);
+        yPos += 4;
+      });
+      yPos += 2;
+    };
+
+    const addBulletPoint = (text, indent = 5) => {
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(50, 50, 50);
+      const lines = pdf.splitTextToSize(text, contentWidth - indent - 5);
+      addNewPageIfNeeded(6);
+      pdf.text('•', margin + indent, yPos);
+      lines.forEach((line, idx) => {
+        if (idx > 0) addNewPageIfNeeded(6);
+        pdf.text(line, margin + indent + 5, yPos);
+        yPos += 4;
+      });
+    };
+
+    const addHighlight = (text, bgColor = [255, 243, 205]) => {
+      addNewPageIfNeeded(12);
+      pdf.setFillColor(...bgColor);
+      const lines = pdf.splitTextToSize(text, contentWidth - 10);
+      const boxHeight = lines.length * 4 + 6;
+      pdf.roundedRect(margin, yPos - 3, contentWidth, boxHeight, 2, 2, 'F');
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(80, 60, 0);
+      lines.forEach(line => {
+        pdf.text(line, margin + 5, yPos + 2);
+        yPos += 4;
+      });
+      yPos += 5;
+    };
+
+    // === PAGE 1: EN-TETE ===
+    pdf.setFillColor(0, 75, 99);
+    pdf.rect(0, 0, pageWidth, 40, 'F');
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Soins de parodontie', margin, 18);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('Fiche d\'information patient', margin, 26);
+
+    const praticienText = contextInfo?.praticienNom ? 'Dr ' + contextInfo.praticienNom : '';
+    const centreText = contextInfo?.centreNom || 'HelloParo';
+    if (praticienText) {
+      pdf.text(praticienText + ' - ' + centreText, margin, 34);
+    } else {
+      pdf.text(centreText, margin, 34);
+    }
+
+    // Patient info box
+    yPos = 50;
+    pdf.setFillColor(248, 250, 252);
+    pdf.roundedRect(margin, yPos, contentWidth, 18, 3, 3, 'F');
+    pdf.setDrawColor(226, 232, 240);
+    pdf.roundedRect(margin, yPos, contentWidth, 18, 3, 3, 'S');
+
+    pdf.setFontSize(9);
+    pdf.setTextColor(0, 0, 0);
+    const patientFullName = ((patientInfo?.firstName || '') + ' ' + (patientInfo?.name || '')).trim() || 'Patient';
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Patient:', margin + 5, yPos + 7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(patientFullName, margin + 25, yPos + 7);
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Date:', margin + 5, yPos + 13);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(patientInfo?.date || new Date().toLocaleDateString('fr-FR'), margin + 20, yPos + 13);
+
+    yPos = 78;
+
+    // Introduction
+    pdf.setFillColor(224, 242, 254);
+    pdf.roundedRect(margin, yPos - 3, contentWidth, 14, 2, 2, 'F');
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(3, 105, 161);
+    const introText = pdf.splitTextToSize('Vous avez ete vu en consultation pour le traitement d\'une maladie parodontale, voici un recapitulatif de la consultation.', contentWidth - 10);
+    introText.forEach((line, idx) => {
+      pdf.text(line, margin + 5, yPos + 4 + idx * 4);
+    });
+    yPos += 20;
+
+    // === LA MALADIE PARODONTALE ===
+    addTitle('La maladie parodontale', 16, [0, 75, 99]);
+    yPos += 3;
+
+    // 1. Definition
+    addSubtitle('1. Definition');
+    addParagraph('La maladie parodontale est une maladie chronique, inflammatoire et multifactorielle. Elle touche les tissus de soutien de la dent (gencive, ligament, os) et peut, si elle n\'est pas traitee, conduire a un dechaussement progressif des dents.');
+
+    // 2. Approche globale
+    addSubtitle('2. Une approche globale du traitement');
+    addParagraph('Pour obtenir un traitement efficace et des resultats durables, tous les facteurs impliques doivent etre pris en compte. Le traitement repose sur une collaboration etroite entre le patient et l\'equipe soignante.');
+
+    // 3. Les differents facteurs
+    addSubtitle('3. Les differents facteurs a considerer');
+    yPos += 2;
+
+    // Facteur familial
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 75, 99);
+    addNewPageIfNeeded(10);
+    pdf.text('Le facteur familial', margin + 3, yPos);
+    yPos += 5;
+    addParagraph('La maladie parodontale presente souvent une predisposition genetique. Il est donc important d\'etre vigilant si des antecedents familiaux sont connus.');
+    addHighlight('Faites surveiller vos enfants des leur plus jeune age, afin de prevenir toute apparition precoce de signes de la maladie.', [254, 243, 199]);
+
+    // Facteur bacterien
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 75, 99);
+    addNewPageIfNeeded(10);
+    pdf.text('Le facteur bacterien', margin + 3, yPos);
+    yPos += 5;
+    addParagraph('La plaque bacterienne est la cause principale de l\'inflammation des gencives. Son elimination doit etre :');
+    addBulletPoint('Quotidienne, par le patient, a l\'aide d\'un brossage adapte et des aides interdentaires recommandees par le chirurgien-dentiste.');
+    addBulletPoint('Professionnelle, lors du debridement effectue par le praticien pour assainir les tissus en profondeur.');
+    yPos += 2;
+    addHighlight('Plus le brossage est rigoureux et complet, meilleurs seront les resultats du traitement.', [220, 252, 231]);
+
+    // Facteurs de risque generaux
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 75, 99);
+    addNewPageIfNeeded(10);
+    pdf.text('Les facteurs de risque generaux', margin + 3, yPos);
+    yPos += 5;
+    addParagraph('Certains facteurs peuvent aggraver ou favoriser la maladie parodontale :');
+    addBulletPoint('Maladies generales : diabete, hypertension, stress chronique.');
+    addBulletPoint('Tabac : il s\'agit d\'un facteur de risque majeur. Le tabac diminue la capacite de cicatrisation et reduit l\'efficacite du traitement.');
+    yPos += 2;
+    addHighlight('Un sevrage tabagique est fortement recommande pour favoriser la guerison et stabiliser la maladie. N\'hesitez pas a en parler a votre praticien, qui pourra vous orienter vers un confrere specialise dans l\'accompagnement au sevrage.', [254, 226, 226]);
+
+    // 4. En resume
+    addNewPageIfNeeded(30);
+    addSubtitle('4. En resume');
+    addParagraph('La maladie parodontale est :');
+    addBulletPoint('Chronique : elle necessite un suivi a vie.');
+    addBulletPoint('Inflammatoire : elle est causee par la plaque bacterienne.');
+    addBulletPoint('Multifactorielle : elle depend de facteurs genetiques, comportementaux et systemiques.');
+    yPos += 2;
+    addParagraph('Une prise en charge globale et personnalisee est essentielle pour preserver votre sante bucco-dentaire a long terme.');
+
+    // === PAGE 2: LE TRAITEMENT ===
+    pdf.addPage();
+    yPos = 20;
+
+    addTitle('La maladie parodontale : le traitement', 16, [0, 75, 99]);
+    yPos += 3;
+
+    // 1. Le bilan parodontal
+    addSubtitle('1. Le bilan parodontal');
+    addParagraph('La premiere etape du traitement consiste a realiser un bilan parodontal complet. Ce bilan comprend :');
+    addBulletPoint('Un examen clinique approfondi des gencives et des dents.');
+    addBulletPoint('Des radiographies dentaires permettant d\'evaluer la perte osseuse et l\'etat des tissus de soutien.');
+    yPos += 2;
+    addParagraph('Ces elements permettent d\'etablir un diagnostic precis de la maladie parodontale (stade et grade) et de definir un plan de traitement personnalise :');
+    addBulletPoint('Nombre de seances necessaires');
+    addBulletPoint('Etendue du debridement (zones concernees)');
+    addBulletPoint('Chirurgie a prevoir');
+
+    // 2. Le debridement parodontal
+    yPos += 3;
+    addSubtitle('2. Le debridement parodontal');
+    addParagraph('Le debridement correspond a un nettoyage en profondeur des poches parodontales. Il permet :');
+    addBulletPoint('D\'assainir les tissus autour des dents');
+    addBulletPoint('De reduire la quantite de bacteries pathogenes');
+    addBulletPoint('De favoriser la cicatrisation et la stabilisation de la maladie');
+
+    // 3. Le controle de cicatrisation
+    yPos += 3;
+    addSubtitle('3. Le controle de cicatrisation et la maintenance');
+    addParagraph('Environ trois mois apres le debridement, un controle de cicatrisation est realise. C\'est la seance de maintenance parodontale, essentielle pour verifier la stabilite du resultat et adapter les mesures d\'hygiene ou les traitements complementaires si necessaire.');
+    addParagraph('Selon l\'etendue et la severite de la maladie, une maintenance reguliere est ensuite mise en place :');
+    addBulletPoint('De 1 a 4 fois par an en moyenne');
+    addBulletPoint('Pour prevenir les rechutes et maintenir les tissus sains');
+    yPos += 2;
+    addHighlight('La maladie parodontale est une maladie chronique : un suivi a vie est necessaire pour conserver les resultats obtenus.', [254, 243, 199]);
+
+    // 4. Prise en charge financiere
+    yPos += 3;
+    addSubtitle('4. Prise en charge financiere');
+    addParagraph('Les soins de parodontie ne sont pas rembourses par la Securite sociale. Cependant, lors des seances de maintenance, une partie de l\'acte peut etre prise en charge selon les regles en vigueur. Un devis detaille vous sera remis avant le debut du traitement.');
+
+    // 5. Modalites de reglement
+    yPos += 3;
+    addSubtitle('5. Modalites de reglement');
+    addParagraph('Les soins de parodontie representent un investissement pour votre sante bucco-dentaire.');
+    addHighlight('Il est possible de regler en plusieurs fois sans frais. Pour connaitre les modalites, merci de vous rapprocher de l\'accueil.', [220, 252, 231]);
+
+    // Pied de page sur chaque page
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(7);
+      pdf.setTextColor(128, 128, 128);
+      const dateStr = new Date().toLocaleDateString('fr-FR');
+      pdf.text('Document genere le ' + dateStr + ' - HelloParo - Page ' + i + '/' + totalPages, margin, pageHeight - 8);
+    }
 
     return pdf;
   };
@@ -200,7 +340,7 @@ export default function FichePatient({ patientInfo, contextInfo }) {
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-500 to-cyan-600 rounded-2xl p-6 text-white shadow-lg">
         <h2 className="text-2xl font-bold mb-2">Fiche Patient - Soins de Parodontie</h2>
-        <p className="opacity-90">Document d'information pour le patient sur les soins parodontaux</p>
+        <p className="opacity-90">Document d'information complet pour le patient sur la maladie parodontale et son traitement</p>
       </div>
 
       {/* Actions principales */}
@@ -324,16 +464,26 @@ export default function FichePatient({ patientInfo, contextInfo }) {
       {/* Contenu informatif */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">Contenu du document</h3>
-        <div className="space-y-4 text-sm text-slate-600">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
           <div className="p-4 bg-slate-50 rounded-lg">
-            <h4 className="font-semibold text-slate-700 mb-2">Le document contient:</h4>
+            <h4 className="font-semibold text-slate-700 mb-2">La maladie parodontale</h4>
             <ul className="list-disc list-inside space-y-1">
-              <li>Qu'est-ce que la parodontie ?</li>
-              <li>Les signes d'alerte a surveiller</li>
-              <li>L'importance du traitement</li>
-              <li>Les etapes du traitement parodontal</li>
-              <li>Conseils d'hygiene bucco-dentaire</li>
-              <li>Le suivi parodontal</li>
+              <li>Definition</li>
+              <li>Approche globale du traitement</li>
+              <li>Facteur familial</li>
+              <li>Facteur bacterien</li>
+              <li>Facteurs de risque generaux</li>
+              <li>Resume</li>
+            </ul>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <h4 className="font-semibold text-slate-700 mb-2">Le traitement</h4>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Bilan parodontal</li>
+              <li>Debridement parodontal</li>
+              <li>Controle de cicatrisation et maintenance</li>
+              <li>Prise en charge financiere</li>
+              <li>Modalites de reglement</li>
             </ul>
           </div>
         </div>
