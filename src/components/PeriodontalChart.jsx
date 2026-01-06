@@ -1272,6 +1272,14 @@ export default function PeriodontalChart() {
   const [qrTransferStatus, setQrTransferStatus] = useState(null); // null, sending, sent, error
   const qrPeerRef = useRef(null);
 
+  // Panoramic analysis states
+  const [showPanoModal, setShowPanoModal] = useState(false);
+  const [panoImage, setPanoImage] = useState(null);
+  const [panoAnalyzing, setPanoAnalyzing] = useState(false);
+  const [panoError, setPanoError] = useState(null);
+  const [panoResult, setPanoResult] = useState(null);
+  const PANO_WEBHOOK_URL = 'https://n8n.cemedis.app/webhook/radio-panoramique-segmentation1';
+
   // Gmail OAuth configuration
   const GMAIL_CLIENT_ID = '77466324556-s2siqrgbdj9qt0hu45s9oqsa4n5650in.apps.googleusercontent.com';
   const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.compose';
@@ -1807,6 +1815,110 @@ export default function PeriodontalChart() {
         };
       }
     }
+  };
+
+  // Analyse panoramique IA
+  const handlePanoFileImport = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPanoImage(event.target.result);
+        setPanoError(null);
+        setPanoResult(null);
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+  };
+
+  const handlePanoCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { mediaSource: 'screen' }
+      });
+
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      stream.getTracks().forEach(track => track.stop());
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      setPanoImage(dataUrl);
+      setPanoError(null);
+      setPanoResult(null);
+    } catch (error) {
+      console.error('Erreur capture:', error);
+      setPanoError('Erreur lors de la capture d\'écran');
+    }
+  };
+
+  const analyzePanorama = async () => {
+    if (!panoImage) return;
+
+    setPanoAnalyzing(true);
+    setPanoError(null);
+    setPanoResult(null);
+
+    try {
+      // Extract base64 data from data URL
+      const base64Data = panoImage.split(',')[1];
+
+      const response = await fetch(PANO_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ img_b64: base64Data })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.dents) {
+        setPanoResult(result);
+      } else {
+        throw new Error(result.error || 'Analyse échouée');
+      }
+    } catch (error) {
+      console.error('Erreur analyse panoramique:', error);
+      setPanoError(error.message);
+    } finally {
+      setPanoAnalyzing(false);
+    }
+  };
+
+  const applyPanoResult = () => {
+    if (!panoResult || !panoResult.dents) return;
+
+    const newTeethData = { ...teethData };
+
+    Object.entries(panoResult.dents).forEach(([toothNum, data]) => {
+      const tooth = parseInt(toothNum);
+      if (newTeethData[tooth]) {
+        // Update missing status (absent = missing)
+        newTeethData[tooth] = {
+          ...newTeethData[tooth],
+          missing: !data.present,
+          implant: data.implant || false
+        };
+      }
+    });
+
+    setTeethData(newTeethData);
+    setShowPanoModal(false);
+    setPanoImage(null);
+    setPanoResult(null);
   };
 
   // Envoyer à Veasy
@@ -2368,6 +2480,19 @@ Cordialement`;
           <div className="flex gap-6">
             {/* Zone principale - Arcades dentaires */}
             <div ref={chartRef} className={`space-y-6 ${selectedTooth ? 'flex-1' : 'w-full'}`}>
+              {/* Bouton Analyse Panoramique */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowPanoModal(true)}
+                  className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Mettre a jour le schema a partir d'une panoramique
+                </button>
+              </div>
+
               {/* Arcade supérieure */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200">
                 <h2 className="text-lg font-semibold text-slate-800 mb-4">Arcade Maxillaire</h2>
@@ -3280,6 +3405,222 @@ Cordialement`;
               >
                 Fermer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Analyse Panoramique */}
+      {showPanoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-gradient-to-r from-violet-500 to-purple-600">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Analyse IA de panoramique
+              </h3>
+              <button
+                onClick={() => {
+                  setShowPanoModal(false);
+                  setPanoImage(null);
+                  setPanoResult(null);
+                  setPanoError(null);
+                }}
+                className="text-white hover:text-slate-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {!panoImage ? (
+                /* Step 1: Import or Capture */
+                <div className="space-y-6">
+                  <p className="text-slate-600 text-center">
+                    Importez une radiographie panoramique ou capturez-en une depuis votre ecran pour mettre a jour automatiquement le schema dentaire.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Import option */}
+                    <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-violet-300 rounded-2xl bg-violet-50 hover:bg-violet-100 cursor-pointer transition-colors">
+                      <svg className="w-16 h-16 text-violet-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      <span className="text-lg font-semibold text-violet-800 mb-1">Importer une radio</span>
+                      <span className="text-sm text-violet-600">Cliquez pour selectionner un fichier</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePanoFileImport}
+                      />
+                    </label>
+
+                    {/* Capture option */}
+                    <button
+                      onClick={handlePanoCapture}
+                      className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-purple-300 rounded-2xl bg-purple-50 hover:bg-purple-100 transition-colors"
+                    >
+                      <svg className="w-16 h-16 text-purple-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-lg font-semibold text-purple-800 mb-1">Capture d'ecran</span>
+                      <span className="text-sm text-purple-600">Capturez depuis votre ecran</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Step 2: Image loaded - Analyze */
+                <div className="space-y-6">
+                  {/* Image preview with animation overlay */}
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200">
+                    <img
+                      src={panoImage}
+                      alt="Panoramique"
+                      className={`w-full h-auto max-h-[400px] object-contain bg-black ${panoAnalyzing ? 'opacity-50' : ''}`}
+                    />
+
+                    {/* Analyzing animation overlay */}
+                    {panoAnalyzing && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50">
+                        <div className="relative">
+                          {/* Scanning line animation */}
+                          <div className="w-64 h-1 bg-violet-500 rounded-full animate-pulse mb-4"></div>
+                          <div className="absolute inset-0 w-full h-full">
+                            <div className="w-full h-1 bg-gradient-to-r from-transparent via-violet-400 to-transparent animate-[scan_2s_ease-in-out_infinite]"></div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-white">
+                          <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          <span className="text-lg font-medium">Analyse IA en cours...</span>
+                        </div>
+                        <p className="text-violet-200 text-sm mt-2">Detection des dents, implants et anomalies</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Error message */}
+                  {panoError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                      <p className="font-medium">Erreur lors de l'analyse</p>
+                      <p className="text-sm">{panoError}</p>
+                    </div>
+                  )}
+
+                  {/* Results */}
+                  {panoResult && (
+                    <div className="space-y-4">
+                      {/* Alert if any */}
+                      {panoResult.alerte && (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+                          <p className="font-medium flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {panoResult.alerte.message}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Statistics */}
+                      <div className="bg-slate-50 rounded-xl p-4">
+                        <h4 className="font-semibold text-slate-800 mb-3">Resultats de l'analyse</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center p-3 bg-white rounded-lg">
+                            <div className="text-2xl font-bold text-green-600">{panoResult.statistiques?.dents_presentes || 0}</div>
+                            <div className="text-xs text-slate-600">Dents presentes</div>
+                          </div>
+                          <div className="text-center p-3 bg-white rounded-lg">
+                            <div className="text-2xl font-bold text-red-600">{panoResult.statistiques?.dents_absentes || 0}</div>
+                            <div className="text-xs text-slate-600">Dents absentes</div>
+                          </div>
+                          <div className="text-center p-3 bg-white rounded-lg">
+                            <div className="text-2xl font-bold text-blue-600">{panoResult.statistiques?.implants || 0}</div>
+                            <div className="text-xs text-slate-600">Implants</div>
+                          </div>
+                          <div className="text-center p-3 bg-white rounded-lg">
+                            <div className="text-2xl font-bold text-amber-600">{panoResult.statistiques?.anomalies || 0}</div>
+                            <div className="text-xs text-slate-600">Anomalies</div>
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        {panoResult.details?.absentes?.length > 0 && (
+                          <div className="mt-3 text-sm">
+                            <span className="text-slate-600">Dents absentes: </span>
+                            <span className="font-medium text-slate-800">{panoResult.details.absentes.join(', ')}</span>
+                          </div>
+                        )}
+                        {panoResult.details?.implants?.length > 0 && (
+                          <div className="mt-1 text-sm">
+                            <span className="text-slate-600">Implants: </span>
+                            <span className="font-medium text-slate-800">{panoResult.details.implants.join(', ')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={() => {
+                        setPanoImage(null);
+                        setPanoResult(null);
+                        setPanoError(null);
+                      }}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium"
+                    >
+                      Changer d'image
+                    </button>
+
+                    {!panoResult ? (
+                      <button
+                        onClick={analyzePanorama}
+                        disabled={panoAnalyzing}
+                        className="px-6 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {panoAnalyzing ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Analyse en cours...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            Lancer l'analyse IA
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={applyPanoResult}
+                        className="px-6 py-2.5 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-all flex items-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Appliquer au schema
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
