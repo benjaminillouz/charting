@@ -1871,6 +1871,9 @@ export default function PeriodontalChart() {
       // Extract base64 data from data URL
       const base64Data = panoImage.split(',')[1];
 
+      console.log('Envoi de la panoramique au webhook...');
+      console.log('Taille de l\'image (base64):', base64Data.length, 'caractères');
+
       const response = await fetch(PANO_WEBHOOK_URL, {
         method: 'POST',
         headers: {
@@ -1879,20 +1882,30 @@ export default function PeriodontalChart() {
         body: JSON.stringify({ img_b64: base64Data })
       });
 
+      console.log('Réponse reçue, status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Erreur ${response.status}: ${errorText || response.statusText}`);
       }
 
       const result = await response.json();
+      console.log('Résultat de l\'analyse:', result);
 
       if (result.success && result.dents) {
         setPanoResult(result);
       } else {
-        throw new Error(result.error || 'Analyse échouée');
+        throw new Error(result.error || 'Analyse échouée - format de réponse invalide');
       }
     } catch (error) {
       console.error('Erreur analyse panoramique:', error);
-      setPanoError(error.message);
+
+      let errorMessage = error.message;
+      if (error.message === 'Failed to fetch') {
+        errorMessage = 'Impossible de contacter le serveur d\'analyse. Vérifiez votre connexion internet ou contactez l\'administrateur (erreur CORS possible).';
+      }
+
+      setPanoError(errorMessage);
     } finally {
       setPanoAnalyzing(false);
     }
