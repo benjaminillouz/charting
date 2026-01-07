@@ -1871,6 +1871,9 @@ export default function PeriodontalChart() {
       // Extract base64 data from data URL
       const base64Data = panoImage.split(',')[1];
 
+      console.log('Envoi de la panoramique au webhook...');
+      console.log('Taille de l\'image (base64):', base64Data.length, 'caractères');
+
       const response = await fetch(PANO_WEBHOOK_URL, {
         method: 'POST',
         headers: {
@@ -1879,31 +1882,41 @@ export default function PeriodontalChart() {
         body: JSON.stringify({ img_b64: base64Data })
       });
 
+      console.log('Réponse reçue, status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Erreur ${response.status}: ${errorText || response.statusText}`);
       }
 
       const result = await response.json();
+      console.log('Résultat de l\'analyse:', result);
 
-      if (result.success && result.dents) {
+      if (result.success && result.detail_par_dent) {
         setPanoResult(result);
       } else {
-        throw new Error(result.error || 'Analyse échouée');
+        throw new Error(result.error || 'Analyse échouée - format de réponse invalide');
       }
     } catch (error) {
       console.error('Erreur analyse panoramique:', error);
-      setPanoError(error.message);
+
+      let errorMessage = error.message;
+      if (error.message === 'Failed to fetch') {
+        errorMessage = 'Impossible de contacter le serveur d\'analyse. Vérifiez votre connexion internet ou contactez l\'administrateur (erreur CORS possible).';
+      }
+
+      setPanoError(errorMessage);
     } finally {
       setPanoAnalyzing(false);
     }
   };
 
   const applyPanoResult = () => {
-    if (!panoResult || !panoResult.dents) return;
+    if (!panoResult || !panoResult.detail_par_dent) return;
 
     const newTeethData = { ...teethData };
 
-    Object.entries(panoResult.dents).forEach(([toothNum, data]) => {
+    Object.entries(panoResult.detail_par_dent).forEach(([toothNum, data]) => {
       const tooth = parseInt(toothNum);
       if (newTeethData[tooth]) {
         // Update missing status (absent = missing)
@@ -3537,34 +3550,34 @@ Cordialement`;
                         <h4 className="font-semibold text-slate-800 mb-3">Resultats de l'analyse</h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">{panoResult.statistiques?.dents_presentes || 0}</div>
-                            <div className="text-xs text-slate-600">Dents presentes</div>
+                            <div className="text-2xl font-bold text-green-600">{panoResult.resume?.dents_presentes || 0}</div>
+                            <div className="text-xs text-slate-600">Dents présentes</div>
                           </div>
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-red-600">{panoResult.statistiques?.dents_absentes || 0}</div>
+                            <div className="text-2xl font-bold text-red-600">{panoResult.resume?.dents_absentes || 0}</div>
                             <div className="text-xs text-slate-600">Dents absentes</div>
                           </div>
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">{panoResult.statistiques?.implants || 0}</div>
+                            <div className="text-2xl font-bold text-blue-600">{panoResult.resume?.implants || 0}</div>
                             <div className="text-xs text-slate-600">Implants</div>
                           </div>
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-amber-600">{panoResult.statistiques?.anomalies || 0}</div>
-                            <div className="text-xs text-slate-600">Anomalies</div>
+                            <div className="text-2xl font-bold text-amber-600">{panoResult.resume?.taux_presence || '0%'}</div>
+                            <div className="text-xs text-slate-600">Taux présence</div>
                           </div>
                         </div>
 
                         {/* Details */}
-                        {panoResult.details?.absentes?.length > 0 && (
+                        {panoResult.listes?.absentes?.length > 0 && (
                           <div className="mt-3 text-sm">
                             <span className="text-slate-600">Dents absentes: </span>
-                            <span className="font-medium text-slate-800">{panoResult.details.absentes.join(', ')}</span>
+                            <span className="font-medium text-slate-800">{panoResult.listes.absentes.join(', ')}</span>
                           </div>
                         )}
-                        {panoResult.details?.implants?.length > 0 && (
+                        {panoResult.listes?.implants?.length > 0 && (
                           <div className="mt-1 text-sm">
                             <span className="text-slate-600">Implants: </span>
-                            <span className="font-medium text-slate-800">{panoResult.details.implants.join(', ')}</span>
+                            <span className="font-medium text-slate-800">{panoResult.listes.implants.join(', ')}</span>
                           </div>
                         )}
                       </div>
