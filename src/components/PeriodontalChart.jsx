@@ -2549,7 +2549,9 @@ Cordialement`;
                 {/* Graphique Vestibulaire */}
                 <div className="mb-4">
                   <h3 className="text-sm font-medium text-slate-600 mb-2">Vestibulaire</h3>
-                  <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="buccal" />
+                  <div className="flex justify-center overflow-x-auto">
+                    <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="buccal" />
+                  </div>
                 </div>
 
                 {/* Dents */}
@@ -2578,7 +2580,9 @@ Cordialement`;
                 {/* Graphique Palatin */}
                 <div className="mt-4">
                   <h3 className="text-sm font-medium text-slate-600 mb-2">Palatin</h3>
-                  <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="lingual" />
+                  <div className="flex justify-center overflow-x-auto">
+                    <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="lingual" />
+                  </div>
                 </div>
               </div>
 
@@ -2589,7 +2593,9 @@ Cordialement`;
                 {/* Graphique Lingual */}
                 <div className="mb-4">
                   <h3 className="text-sm font-medium text-slate-600 mb-2">Lingual</h3>
-                  <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="lingual" />
+                  <div className="flex justify-center overflow-x-auto">
+                    <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="lingual" />
+                  </div>
                 </div>
 
                 {/* Dents */}
@@ -2618,7 +2624,9 @@ Cordialement`;
                 {/* Graphique Vestibulaire */}
                 <div className="mt-4">
                   <h3 className="text-sm font-medium text-slate-600 mb-2">Vestibulaire</h3>
-                  <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="buccal" />
+                  <div className="flex justify-center overflow-x-auto">
+                    <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="buccal" />
+                  </div>
                 </div>
               </div>
             </div>
