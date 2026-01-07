@@ -2553,9 +2553,9 @@ Cordialement`;
                 </div>
 
                 {/* Dents */}
-                <div className="flex justify-center gap-1 my-4 overflow-x-auto pb-2">
+                <div className="flex justify-center my-4 overflow-x-auto pb-2">
                   {TEETH_UPPER.map(tooth => (
-                    <div key={tooth} className="flex flex-col items-center">
+                    <div key={tooth} className="flex flex-col items-center" style={{ width: '50px', flexShrink: 0 }}>
                       <ToothSVG
                         toothNumber={tooth}
                         isUpper={true}
@@ -2593,9 +2593,9 @@ Cordialement`;
                 </div>
 
                 {/* Dents */}
-                <div className="flex justify-center gap-1 my-4 overflow-x-auto pb-2">
+                <div className="flex justify-center my-4 overflow-x-auto pb-2">
                   {TEETH_LOWER.map(tooth => (
-                    <div key={tooth} className="flex flex-col items-center">
+                    <div key={tooth} className="flex flex-col items-center" style={{ width: '50px', flexShrink: 0 }}>
                       <ToothSVG
                         toothNumber={tooth}
                         isUpper={false}
