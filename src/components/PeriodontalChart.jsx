@@ -1924,14 +1924,27 @@ export default function PeriodontalChart() {
 
     const newTeethData = { ...teethData };
 
+    // Get implants list for quick lookup
+    const implantsList = panoResult.listes?.implants || [];
+    const couronnesList = panoResult.listes?.couronnes || [];
+
     Object.entries(panoResult.segmentation).forEach(([toothNum, data]) => {
       const tooth = parseInt(toothNum);
       if (newTeethData[tooth]) {
+        // Check if tooth has implant (from listes or restaurations)
+        const hasImplant = implantsList.includes(toothNum) ||
+          (data.restaurations && data.restaurations.some(r => r.toLowerCase().includes('implant')));
+
+        // Check if tooth has crown
+        const hasCrown = couronnesList.includes(toothNum) ||
+          (data.restaurations && data.restaurations.some(r => r.toLowerCase().includes('couronne')));
+
         // Update missing status (absent = missing)
         newTeethData[tooth] = {
           ...newTeethData[tooth],
           missing: !data.present,
-          implant: data.implant || false
+          implant: hasImplant,
+          crown: hasCrown
         };
       }
     });
@@ -3519,10 +3532,19 @@ Cordialement`;
                   {/* Image preview with animation overlay */}
                   <div className="relative rounded-xl overflow-hidden border border-slate-200">
                     <img
-                      src={panoImage}
+                      src={panoResult?.image?.annotated_base64 ? `data:image/jpeg;base64,${panoResult.image.annotated_base64}` : panoImage}
                       alt="Panoramique"
                       className={`w-full h-auto max-h-[400px] object-contain bg-black ${panoAnalyzing ? 'opacity-50' : ''}`}
                     />
+                    {/* Annotated badge */}
+                    {panoResult?.image?.annotated_base64 && (
+                      <div className="absolute top-2 right-2 bg-violet-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Annotée
+                      </div>
+                    )}
 
                     {/* Analyzing animation overlay */}
                     {panoAnalyzing && (
@@ -3573,43 +3595,68 @@ Cordialement`;
                       <div className="bg-slate-50 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-semibold text-slate-800">Résultats de l'analyse</h4>
-                          {panoResult.detections_count > 0 && (
+                          {panoResult.resume?.total_detections > 0 && (
                             <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full">
-                              {panoResult.detections_count} détections IA
+                              {panoResult.resume.total_detections} détections IA
                             </span>
                           )}
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">{panoResult.resume?.dents_presentes || 0}</div>
-                            <div className="text-xs text-slate-600">Dents présentes</div>
+                            <div className="text-2xl font-bold text-green-600">{panoResult.resume?.total_dents_detectees || 0}</div>
+                            <div className="text-xs text-slate-600">Dents détectées</div>
                           </div>
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-red-600">{panoResult.resume?.dents_absentes || 0}</div>
-                            <div className="text-xs text-slate-600">Dents absentes</div>
+                            <div className="text-2xl font-bold text-red-600">{panoResult.resume?.total_dents_manquantes || 0}</div>
+                            <div className="text-xs text-slate-600">Dents manquantes</div>
                           </div>
                           <div className="text-center p-3 bg-white rounded-lg">
                             <div className="text-2xl font-bold text-blue-600">{panoResult.resume?.implants || 0}</div>
                             <div className="text-xs text-slate-600">Implants</div>
                           </div>
                           <div className="text-center p-3 bg-white rounded-lg">
-                            <div className="text-2xl font-bold text-amber-600">{panoResult.resume?.taux_presence || '0%'}</div>
+                            <div className="text-2xl font-bold text-amber-600">
+                              {panoResult.resume?.total_dents_detectees ? Math.round((panoResult.resume.total_dents_detectees / 32) * 100) + '%' : '0%'}
+                            </div>
                             <div className="text-xs text-slate-600">Taux présence</div>
                           </div>
                         </div>
 
+                        {/* Additional restorations stats */}
+                        {(panoResult.resume?.couronnes > 0 || panoResult.resume?.obturations > 0 || panoResult.resume?.traitements_canalaires > 0) && (
+                          <div className="grid grid-cols-3 gap-2 mt-3">
+                            {panoResult.resume?.couronnes > 0 && (
+                              <div className="text-center p-2 bg-white rounded-lg">
+                                <div className="text-lg font-bold text-purple-600">{panoResult.resume.couronnes}</div>
+                                <div className="text-xs text-slate-600">Couronnes</div>
+                              </div>
+                            )}
+                            {panoResult.resume?.obturations > 0 && (
+                              <div className="text-center p-2 bg-white rounded-lg">
+                                <div className="text-lg font-bold text-cyan-600">{panoResult.resume.obturations}</div>
+                                <div className="text-xs text-slate-600">Obturations</div>
+                              </div>
+                            )}
+                            {panoResult.resume?.traitements_canalaires > 0 && (
+                              <div className="text-center p-2 bg-white rounded-lg">
+                                <div className="text-lg font-bold text-orange-600">{panoResult.resume.traitements_canalaires}</div>
+                                <div className="text-xs text-slate-600">Trait. canal.</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Quadrants breakdown */}
-                        {panoResult.quadrants?.length > 0 && (
+                        {panoResult.quadrants && Object.keys(panoResult.quadrants).length > 0 && (
                           <div className="mt-4">
                             <h5 className="text-sm font-medium text-slate-700 mb-2">Détail par quadrant</h5>
                             <div className="grid grid-cols-2 gap-2">
-                              {panoResult.quadrants.map((q, idx) => (
-                                <div key={idx} className="bg-white rounded-lg p-2 border border-slate-100">
-                                  <div className="text-xs font-medium text-slate-700 mb-1">{q.nom}</div>
+                              {Object.entries(panoResult.quadrants).map(([quadrantKey, q]) => (
+                                <div key={quadrantKey} className="bg-white rounded-lg p-2 border border-slate-100">
+                                  <div className="text-xs font-medium text-slate-700 mb-1">{quadrantKey}</div>
                                   <div className="flex gap-2 text-xs">
                                     <span className="text-green-600">{q.presentes} ✓</span>
-                                    <span className="text-red-600">{q.absentes} ✗</span>
-                                    {q.implants > 0 && <span className="text-blue-600">{q.implants} impl.</span>}
+                                    <span className="text-red-600">{q.manquantes} ✗</span>
                                   </div>
                                 </div>
                               ))}
@@ -3618,10 +3665,10 @@ Cordialement`;
                         )}
 
                         {/* Details */}
-                        {panoResult.listes?.absentes?.length > 0 && (
+                        {panoResult.listes?.dents_manquantes?.length > 0 && (
                           <div className="mt-3 text-sm">
-                            <span className="text-slate-600">Dents absentes: </span>
-                            <span className="font-medium text-slate-800">{panoResult.listes.absentes.join(', ')}</span>
+                            <span className="text-slate-600">Dents manquantes: </span>
+                            <span className="font-medium text-slate-800">{panoResult.listes.dents_manquantes.join(', ')}</span>
                           </div>
                         )}
                         {panoResult.listes?.implants?.length > 0 && (
@@ -3630,14 +3677,32 @@ Cordialement`;
                             <span className="font-medium text-slate-800">{panoResult.listes.implants.join(', ')}</span>
                           </div>
                         )}
+                        {panoResult.listes?.couronnes?.length > 0 && (
+                          <div className="mt-1 text-sm">
+                            <span className="text-slate-600">Couronnes: </span>
+                            <span className="font-medium text-slate-800">{panoResult.listes.couronnes.join(', ')}</span>
+                          </div>
+                        )}
+                        {panoResult.listes?.obturations?.length > 0 && (
+                          <div className="mt-1 text-sm">
+                            <span className="text-slate-600">Obturations: </span>
+                            <span className="font-medium text-slate-800">{panoResult.listes.obturations.join(', ')}</span>
+                          </div>
+                        )}
+                        {panoResult.listes?.traitements_canalaires?.length > 0 && (
+                          <div className="mt-1 text-sm">
+                            <span className="text-slate-600">Traitements canalaires: </span>
+                            <span className="font-medium text-slate-800">{panoResult.listes.traitements_canalaires.join(', ')}</span>
+                          </div>
+                        )}
 
                         {/* Detection confidence summary */}
-                        {panoResult.detections?.length > 0 && (
+                        {panoResult.detections_brutes?.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-slate-200">
                             <div className="flex items-center justify-between text-xs text-slate-500">
                               <span>Confiance moyenne IA</span>
                               <span className="font-medium text-slate-700">
-                                {Math.round(panoResult.detections.reduce((acc, d) => acc + d.confidence, 0) / panoResult.detections.length * 100)}%
+                                {Math.round(panoResult.detections_brutes.reduce((acc, d) => acc + d.confidence, 0) / panoResult.detections_brutes.length * 100)}%
                               </span>
                             </div>
                           </div>
