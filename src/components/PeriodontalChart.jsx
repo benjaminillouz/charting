@@ -1497,6 +1497,119 @@ export default function PeriodontalChart() {
     }
   };
 
+  // Remplissage aléatoire pour tests (valeurs réalistes sans extrêmes)
+  const fillRandomData = () => {
+    const molars = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38];
+    const allTeeth = [...TEETH_UPPER, ...TEETH_LOWER];
+
+    // Helper pour générer un nombre aléatoire dans une plage
+    const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const randomBool = (probability = 0.5) => Math.random() < probability;
+
+    // Distribution de probing réaliste (majorité entre 2-4mm)
+    const randomProbing = () => {
+      const rand = Math.random();
+      if (rand < 0.3) return randomInt(1, 2);      // 30% : 1-2mm (sain)
+      if (rand < 0.7) return randomInt(3, 4);      // 40% : 3-4mm (léger)
+      if (rand < 0.9) return randomInt(5, 6);      // 20% : 5-6mm (modéré)
+      return randomInt(7, 8);                       // 10% : 7-8mm (sévère mais pas extrême)
+    };
+
+    // Récession réaliste (majorité 0-2mm)
+    const randomRecession = () => {
+      const rand = Math.random();
+      if (rand < 0.5) return 0;                    // 50% : pas de récession
+      if (rand < 0.8) return randomInt(1, 2);     // 30% : 1-2mm
+      return randomInt(3, 4);                      // 20% : 3-4mm
+    };
+
+    const data = {};
+
+    // Choisir quelques dents à marquer comme manquantes (2-4 dents)
+    const missingCount = randomInt(2, 4);
+    const missingTeeth = new Set();
+    while (missingTeeth.size < missingCount) {
+      const randomTooth = allTeeth[randomInt(0, allTeeth.length - 1)];
+      // Éviter les dents de devant pour plus de réalisme
+      if (![11, 21, 31, 41].includes(randomTooth)) {
+        missingTeeth.add(randomTooth);
+      }
+    }
+
+    // Choisir 1-2 implants parmi les dents manquantes
+    const implantTeeth = new Set();
+    const implantCount = randomInt(1, Math.min(2, missingTeeth.size));
+    const missingArray = Array.from(missingTeeth);
+    for (let i = 0; i < implantCount; i++) {
+      if (missingArray[i]) {
+        implantTeeth.add(missingArray[i]);
+        missingTeeth.delete(missingArray[i]); // C'est un implant, pas vraiment manquante
+      }
+    }
+
+    allTeeth.forEach(tooth => {
+      const isMissing = missingTeeth.has(tooth);
+      const isImplant = implantTeeth.has(tooth);
+      const isMolar = molars.includes(tooth);
+
+      if (isMissing) {
+        data[tooth] = {
+          ...createToothData(),
+          missing: true
+        };
+      } else if (isImplant) {
+        data[tooth] = {
+          ...createToothData(),
+          implant: true,
+          buccal: {
+            probing: [randomInt(2, 4), randomInt(2, 4), randomInt(2, 4)],
+            recession: [0, 0, 0],
+            bleeding: [randomBool(0.2), randomBool(0.2), randomBool(0.2)],
+            plaque: [randomBool(0.3), randomBool(0.3), randomBool(0.3)],
+            suppuration: [false, false, false]
+          },
+          lingual: {
+            probing: [randomInt(2, 4), randomInt(2, 4), randomInt(2, 4)],
+            recession: [0, 0, 0],
+            bleeding: [randomBool(0.2), randomBool(0.2), randomBool(0.2)],
+            plaque: [randomBool(0.3), randomBool(0.3), randomBool(0.3)],
+            suppuration: [false, false, false]
+          }
+        };
+      } else {
+        data[tooth] = {
+          missing: false,
+          implant: false,
+          mobility: randomBool(0.1) ? randomInt(1, 2) : 0,  // 10% avec mobilité légère
+          furcation: isMolar ? {
+            buccal: randomBool(0.2) ? randomInt(1, 2) : 0,
+            lingual: randomBool(0.15) ? randomInt(1, 2) : 0,
+            mesial: 0,
+            distal: 0
+          } : { buccal: 0, lingual: 0, mesial: 0, distal: 0 },
+          buccal: {
+            probing: [randomProbing(), randomProbing(), randomProbing()],
+            recession: [randomRecession(), randomRecession(), randomRecession()],
+            bleeding: [randomBool(0.25), randomBool(0.25), randomBool(0.25)],
+            plaque: [randomBool(0.35), randomBool(0.35), randomBool(0.35)],
+            suppuration: [randomBool(0.05), randomBool(0.05), randomBool(0.05)]
+          },
+          lingual: {
+            probing: [randomProbing(), randomProbing(), randomProbing()],
+            recession: [randomRecession(), randomRecession(), randomRecession()],
+            bleeding: [randomBool(0.25), randomBool(0.25), randomBool(0.25)],
+            plaque: [randomBool(0.35), randomBool(0.35), randomBool(0.35)],
+            suppuration: [randomBool(0.05), randomBool(0.05), randomBool(0.05)]
+          },
+          note: ''
+        };
+      }
+    });
+
+    setTeethData(data);
+    setSelectedTooth(null);
+  };
+
   // Génération du PDF
   const generatePdf = async () => {
     setIsGeneratingPdf(true);
@@ -2376,6 +2489,12 @@ Cordialement`;
                     PDF
                   </>
                 )}
+              </button>
+              <button
+                onClick={fillRandomData}
+                className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+              >
+                Test
               </button>
               <button
                 onClick={resetChart}
