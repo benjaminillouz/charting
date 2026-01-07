@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import jsPDF from 'jspdf';
 
 // Textes prédéfinis pour la CAT
@@ -156,7 +156,7 @@ const MultiSelect = ({ options, value, onChange, label }) => (
 );
 
 // Composant principal de diagnostic
-export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, radiographs = [], photos = [], onPdfGenerated }) {
+const DiagnosticParodontal = forwardRef(function DiagnosticParodontal({ stats, patientInfo, contextInfo, radiographs = [], photos = [], onPdfGenerated }, ref) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [diagnostic, setDiagnostic] = useState({
     adressePar: '',
@@ -691,6 +691,11 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
       setIsGeneratingPdf(false);
     }
   };
+
+  // Exposer handleGeneratePdf au parent via ref
+  useImperativeHandle(ref, () => ({
+    generatePdf: handleGeneratePdf
+  }));
 
   return (
     <div className="space-y-4">
@@ -1382,4 +1387,6 @@ export default function DiagnosticParodontal({ stats, patientInfo, contextInfo, 
       </div>
     </div>
   );
-}
+});
+
+export default DiagnosticParodontal;
