@@ -1900,7 +1900,7 @@ export default function PeriodontalChart() {
       const result = await response.json();
       console.log('Résultat de l\'analyse:', result);
 
-      if (result.success && result.detail_par_dent) {
+      if (result.success && result.segmentation) {
         setPanoResult(result);
       } else {
         throw new Error(result.error || 'Analyse échouée - format de réponse invalide');
@@ -1920,11 +1920,11 @@ export default function PeriodontalChart() {
   };
 
   const applyPanoResult = () => {
-    if (!panoResult || !panoResult.detail_par_dent) return;
+    if (!panoResult || !panoResult.segmentation) return;
 
     const newTeethData = { ...teethData };
 
-    Object.entries(panoResult.detail_par_dent).forEach(([toothNum, data]) => {
+    Object.entries(panoResult.segmentation).forEach(([toothNum, data]) => {
       const tooth = parseInt(toothNum);
       if (newTeethData[tooth]) {
         // Update missing status (absent = missing)
@@ -3571,7 +3571,14 @@ Cordialement`;
 
                       {/* Statistics */}
                       <div className="bg-slate-50 rounded-xl p-4">
-                        <h4 className="font-semibold text-slate-800 mb-3">Resultats de l'analyse</h4>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-slate-800">Résultats de l'analyse</h4>
+                          {panoResult.detections_count > 0 && (
+                            <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full">
+                              {panoResult.detections_count} détections IA
+                            </span>
+                          )}
+                        </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="text-center p-3 bg-white rounded-lg">
                             <div className="text-2xl font-bold text-green-600">{panoResult.resume?.dents_presentes || 0}</div>
@@ -3591,6 +3598,25 @@ Cordialement`;
                           </div>
                         </div>
 
+                        {/* Quadrants breakdown */}
+                        {panoResult.quadrants?.length > 0 && (
+                          <div className="mt-4">
+                            <h5 className="text-sm font-medium text-slate-700 mb-2">Détail par quadrant</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                              {panoResult.quadrants.map((q, idx) => (
+                                <div key={idx} className="bg-white rounded-lg p-2 border border-slate-100">
+                                  <div className="text-xs font-medium text-slate-700 mb-1">{q.nom}</div>
+                                  <div className="flex gap-2 text-xs">
+                                    <span className="text-green-600">{q.presentes} ✓</span>
+                                    <span className="text-red-600">{q.absentes} ✗</span>
+                                    {q.implants > 0 && <span className="text-blue-600">{q.implants} impl.</span>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Details */}
                         {panoResult.listes?.absentes?.length > 0 && (
                           <div className="mt-3 text-sm">
@@ -3602,6 +3628,18 @@ Cordialement`;
                           <div className="mt-1 text-sm">
                             <span className="text-slate-600">Implants: </span>
                             <span className="font-medium text-slate-800">{panoResult.listes.implants.join(', ')}</span>
+                          </div>
+                        )}
+
+                        {/* Detection confidence summary */}
+                        {panoResult.detections?.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>Confiance moyenne IA</span>
+                              <span className="font-medium text-slate-700">
+                                {Math.round(panoResult.detections.reduce((acc, d) => acc + d.confidence, 0) / panoResult.detections.length * 100)}%
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
