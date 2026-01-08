@@ -2688,6 +2688,8 @@ export default function PeriodontalChart() {
     let moderatePockets = 0;
     let presentTeeth = 0;
     let maxPocketDepth = 0;
+    let totalProbing = 0;
+    let totalAttachmentLoss = 0;
 
     // Track teeth with pocket depth > 4mm for etendue calculation
     const teethWithDeepPockets = [];
@@ -2704,6 +2706,11 @@ export default function PeriodontalChart() {
       ['buccal', 'lingual'].forEach(surface => {
         data[surface].probing.forEach((p, i) => {
           totalSites++;
+          totalProbing += p;
+          // Perte d'attache = sondage + récession
+          const recession = data[surface].recession[i] || 0;
+          totalAttachmentLoss += (p + recession);
+
           if (data[surface].bleeding[i]) bleedingSites++;
           if (data[surface].plaque[i]) plaqueSites++;
           if (p >= 5) deepPockets++;
@@ -2724,11 +2731,21 @@ export default function PeriodontalChart() {
     const affectedIncisives = teethWithDeepPockets.filter(t => incisives.includes(t));
     const affectedMolaires = teethWithDeepPockets.filter(t => molaires.includes(t));
 
+    // Calcul des moyennes
+    const meanProbingDepth = totalSites > 0 ? totalProbing / totalSites : 0;
+    const meanAttachmentLoss = totalSites > 0 ? totalAttachmentLoss / totalSites : 0;
+    const bleedingIndex = totalSites > 0 ? (bleedingSites / totalSites) * 100 : 0;
+    const plaqueIndex = totalSites > 0 ? (plaqueSites / totalSites) * 100 : 0;
+
     return {
       totalTeeth: presentTeeth,
+      presentTeeth,
       totalSites,
-      bop: totalSites > 0 ? ((bleedingSites / totalSites) * 100).toFixed(1) : 0,
-      plaqueIndex: totalSites > 0 ? ((plaqueSites / totalSites) * 100).toFixed(1) : 0,
+      bop: bleedingIndex.toFixed(1),
+      bleedingIndex,
+      plaqueIndex,
+      meanProbingDepth,
+      meanAttachmentLoss,
       deepPockets,
       moderatePockets,
       maxPocketDepth,
@@ -4232,12 +4249,20 @@ Cordialement`;
               />
             </div>
 
-            {/* Schéma dentaire au centre */}
+            {/* Schéma dentaire au centre avec graphiques */}
             <div className="bg-gradient-to-b from-slate-50 to-white rounded-xl p-4 border border-slate-200">
-              {/* Arcade supérieure */}
-              <div className="flex justify-center mb-2">
+              {/* Graphique Vestibulaire - Arcade supérieure */}
+              <div className="mb-2">
+                <h4 className="text-[10px] font-medium text-slate-500 mb-1 text-center">Vestibulaire</h4>
+                <div className="flex justify-center overflow-x-auto">
+                  <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="buccal" />
+                </div>
+              </div>
+
+              {/* Dents arcade supérieure */}
+              <div className="flex justify-center my-2">
                 {TEETH_UPPER.map(tooth => (
-                  <div key={tooth} className="flex flex-col items-center mx-0.5">
+                  <div key={tooth} className="flex flex-col items-center" style={{ width: '50px', flexShrink: 0 }}>
                     <ToothSVG
                       toothNumber={tooth}
                       isUpper={true}
@@ -4252,18 +4277,35 @@ Cordialement`;
                 ))}
               </div>
 
+              {/* Graphique Palatin - Arcade supérieure */}
+              <div className="mb-3">
+                <h4 className="text-[10px] font-medium text-slate-500 mb-1 text-center">Palatin</h4>
+                <div className="flex justify-center overflow-x-auto">
+                  <PerioGraph teeth={TEETH_UPPER} teethData={teethData} isUpper={true} side="lingual" />
+                </div>
+              </div>
+
               {/* Séparateur avec stats */}
-              <div className="flex justify-center items-center gap-4 py-2 text-[10px] text-slate-600 border-y border-dashed border-slate-300 my-2">
+              <div className="flex justify-center items-center gap-4 py-3 text-[11px] text-slate-700 border-y border-slate-300 my-3 bg-white rounded">
                 <span>Sondage moy: <strong className="text-blue-600">{Number(stats?.meanProbingDepth || 0).toFixed(1)} mm</strong></span>
                 <span>Perte attache: <strong className="text-purple-600">{Number(stats?.meanAttachmentLoss || 0).toFixed(1)} mm</strong></span>
                 <span>Plaque: <strong className="text-amber-600">{Number(stats?.plaqueIndex || 0).toFixed(0)}%</strong></span>
                 <span>Saignement: <strong className="text-red-600">{Number(stats?.bleedingIndex || 0).toFixed(0)}%</strong></span>
+                <span>Dents: <strong className="text-slate-700">{stats?.presentTeeth || 0}</strong></span>
               </div>
 
-              {/* Arcade inférieure */}
-              <div className="flex justify-center mt-2">
+              {/* Graphique Lingual - Arcade inférieure */}
+              <div className="mt-3 mb-2">
+                <h4 className="text-[10px] font-medium text-slate-500 mb-1 text-center">Lingual</h4>
+                <div className="flex justify-center overflow-x-auto">
+                  <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="lingual" />
+                </div>
+              </div>
+
+              {/* Dents arcade inférieure */}
+              <div className="flex justify-center my-2">
                 {TEETH_LOWER.map(tooth => (
-                  <div key={tooth} className="flex flex-col items-center mx-0.5">
+                  <div key={tooth} className="flex flex-col items-center" style={{ width: '50px', flexShrink: 0 }}>
                     <span className={`text-[9px] font-medium ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-600'}`}>
                       {tooth}
                     </span>
@@ -4276,6 +4318,14 @@ Cordialement`;
                     />
                   </div>
                 ))}
+              </div>
+
+              {/* Graphique Vestibulaire - Arcade inférieure */}
+              <div className="mt-2">
+                <h4 className="text-[10px] font-medium text-slate-500 mb-1 text-center">Vestibulaire</h4>
+                <div className="flex justify-center overflow-x-auto">
+                  <PerioGraph teeth={TEETH_LOWER} teethData={teethData} isUpper={false} side="buccal" />
+                </div>
               </div>
             </div>
 
