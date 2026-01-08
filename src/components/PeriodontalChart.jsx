@@ -1587,6 +1587,171 @@ const ProfessionalPerioChart = ({
   );
 };
 
+// Composant tableau pour une seule surface (style periodontalchart-online)
+const SingleSurfaceTable = ({ teeth, teethData, isUpper, surface, onUpdate, toggleMissing, toggleImplant, updateMobility, updateFurcation, showStatusRows = true }) => {
+  const surfaceLabel = surface === 'buccal' ? 'Vestibulaire' : (isUpper ? 'Palatin' : 'Lingual');
+  const MOLAR_TEETH = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38];
+
+  return (
+    <table className="border-collapse text-[9px] w-full" style={{ tableLayout: 'fixed' }}>
+      <tbody>
+        {/* Tooth numbers */}
+        <tr className="bg-slate-100 border-b border-slate-300">
+          <td className="w-20 px-1 py-1 text-right text-slate-500 font-medium border-r border-slate-300"></td>
+          {teeth.map(tooth => (
+            <td key={tooth} className={`text-center font-bold border-r border-slate-200 ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-700'}`} style={{ minWidth: '44px' }}>
+              {tooth}
+            </td>
+          ))}
+        </tr>
+
+        {showStatusRows && (
+          <>
+            {/* Mobility */}
+            <tr className="border-b border-slate-200">
+              <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Mobility</td>
+              {teeth.map(tooth => (
+                <td key={tooth} className="text-center border-r border-slate-200">
+                  <select
+                    value={teethData[tooth].mobility}
+                    onChange={(e) => updateMobility(tooth, parseInt(e.target.value))}
+                    className="w-6 h-4 text-[9px] text-center border-0 bg-transparent"
+                  >
+                    {[0, 1, 2, 3].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </td>
+              ))}
+            </tr>
+
+            {/* Implant */}
+            <tr className="border-b border-slate-200">
+              <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Implant</td>
+              {teeth.map(tooth => (
+                <td key={tooth} className="text-center border-r border-slate-200">
+                  <input type="checkbox" checked={teethData[tooth].implant} onChange={() => toggleImplant(tooth)} className="w-3 h-3" />
+                </td>
+              ))}
+            </tr>
+
+            {/* Furcation */}
+            <tr className="border-b border-slate-200">
+              <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Furcation</td>
+              {teeth.map(tooth => {
+                if (!MOLAR_TEETH.includes(tooth)) return <td key={tooth} className="text-center border-r border-slate-200 text-slate-300">-</td>;
+                const maxF = Math.max(teethData[tooth].furcation.buccal || 0, teethData[tooth].furcation.lingual || 0);
+                return (
+                  <td key={tooth} className="text-center border-r border-slate-200">
+                    <select value={maxF} onChange={(e) => updateFurcation(tooth, 'buccal', parseInt(e.target.value))} className="w-6 h-4 text-[9px] border-0 bg-transparent">
+                      <option value="0">○</option><option value="1">◔</option><option value="2">◑</option><option value="3">●</option>
+                    </select>
+                  </td>
+                );
+              })}
+            </tr>
+          </>
+        )}
+
+        {/* Bleeding on Probing */}
+        <tr className="border-b border-slate-200">
+          <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Bleeding on Probing</td>
+          {teeth.map(tooth => (
+            <td key={tooth} className="text-center border-r border-slate-200 py-0.5">
+              <div className="flex justify-center gap-px">
+                {teethData[tooth][surface].bleeding.map((val, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      const newVals = [...teethData[tooth][surface].bleeding];
+                      newVals[idx] = !newVals[idx];
+                      onUpdate(tooth, surface, 'bleeding', newVals);
+                    }}
+                    className={`w-3 h-3 border border-slate-400 ${val ? 'bg-red-500' : 'bg-white'}`}
+                  />
+                ))}
+              </div>
+            </td>
+          ))}
+        </tr>
+
+        {/* Plaque */}
+        <tr className="border-b border-slate-200">
+          <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Plaque</td>
+          {teeth.map(tooth => (
+            <td key={tooth} className="text-center border-r border-slate-200 py-0.5">
+              <div className="flex justify-center gap-px">
+                {teethData[tooth][surface].plaque.map((val, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      const newVals = [...teethData[tooth][surface].plaque];
+                      newVals[idx] = !newVals[idx];
+                      onUpdate(tooth, surface, 'plaque', newVals);
+                    }}
+                    className={`w-3 h-3 border border-slate-400 ${val ? 'bg-blue-400' : 'bg-white'}`}
+                  />
+                ))}
+              </div>
+            </td>
+          ))}
+        </tr>
+
+        {/* Gingival Margin (recession) */}
+        <tr className="border-b border-slate-200">
+          <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Gingival Margin</td>
+          {teeth.map(tooth => (
+            <td key={tooth} className="text-center border-r border-slate-200">
+              <div className="flex justify-center gap-px">
+                {teethData[tooth][surface].recession.map((val, idx) => (
+                  <input
+                    key={idx}
+                    type="number"
+                    min="-10"
+                    max="15"
+                    value={val || ''}
+                    onChange={(e) => {
+                      const newVals = [...teethData[tooth][surface].recession];
+                      newVals[idx] = parseInt(e.target.value) || 0;
+                      onUpdate(tooth, surface, 'recession', newVals);
+                    }}
+                    className="w-4 h-4 text-center text-[8px] border-0 border-b border-slate-300 bg-transparent focus:outline-none"
+                  />
+                ))}
+              </div>
+            </td>
+          ))}
+        </tr>
+
+        {/* Probing Depth */}
+        <tr className="border-b border-slate-200">
+          <td className="px-1 py-0.5 text-right text-slate-600 bg-slate-50 border-r border-slate-300">Probing Depth</td>
+          {teeth.map(tooth => (
+            <td key={tooth} className="text-center border-r border-slate-200">
+              <div className="flex justify-center gap-px">
+                {teethData[tooth][surface].probing.map((val, idx) => (
+                  <input
+                    key={idx}
+                    type="number"
+                    min="0"
+                    max="15"
+                    value={val || ''}
+                    onChange={(e) => {
+                      const newVals = [...teethData[tooth][surface].probing];
+                      newVals[idx] = parseInt(e.target.value) || 0;
+                      onUpdate(tooth, surface, 'probing', newVals);
+                    }}
+                    className={`w-4 h-4 text-center text-[8px] border-0 border-b border-slate-300 bg-transparent focus:outline-none
+                      ${val >= 5 ? 'text-red-600 font-bold' : val >= 4 ? 'text-amber-600' : ''}`}
+                  />
+                ))}
+              </div>
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  );
+};
+
 // Composant pour tableau compact de données dentaires (style clinique) - LEGACY
 const ClinicalDataTable = ({ teeth, teethData, isUpper, onUpdate, toggleMissing, toggleImplant, updateMobility, updateFurcation }) => {
   const surfaceLabel1 = 'Vestibulaire';
@@ -4051,19 +4216,149 @@ Cordialement`;
             </div>
           </div>
         ) : activeView === 'clinical' ? (
-          /* Vue clinique - style periodontalchart-online.com */
-          <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
-            <ProfessionalPerioChart
-              teethUpper={TEETH_UPPER}
-              teethLower={TEETH_LOWER}
-              teethData={teethData}
-              onUpdate={updateToothData}
-              toggleMissing={toggleMissing}
-              toggleImplant={toggleImplant}
-              updateMobility={updateMobility}
-              updateFurcation={updateFurcation}
-              stats={stats}
-            />
+          /* Vue clinique - layout periodontalchart-online.com */
+          <div className="space-y-2">
+            {/* === ARCADE MAXILLAIRE === */}
+            <div className="bg-white rounded-lg shadow border border-slate-300 overflow-x-auto">
+              {/* Tableau Buccal - en haut */}
+              <SingleSurfaceTable
+                teeth={TEETH_UPPER}
+                teethData={teethData}
+                isUpper={true}
+                surface="buccal"
+                onUpdate={updateToothData}
+                toggleMissing={toggleMissing}
+                toggleImplant={toggleImplant}
+                updateMobility={updateMobility}
+                updateFurcation={updateFurcation}
+                showStatusRows={true}
+              />
+
+              {/* Dents Buccal */}
+              <div className="py-1 bg-slate-50 border-y border-slate-200">
+                <div className="text-[9px] font-bold text-slate-600 text-center mb-1">Buccal</div>
+                <div className="flex justify-center">
+                  {TEETH_UPPER.map(tooth => (
+                    <div key={tooth} className="flex flex-col items-center" style={{ minWidth: '44px' }}>
+                      <ToothSVG
+                        toothNumber={tooth}
+                        isUpper={true}
+                        data={teethData[tooth]}
+                        isSelected={selectedTooth === tooth}
+                        onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dents Palatal */}
+              <div className="py-1 bg-slate-50 border-b border-slate-200">
+                <div className="text-[9px] font-bold text-slate-600 text-center mb-1">Palatal</div>
+                <div className="flex justify-center">
+                  {TEETH_UPPER.map(tooth => (
+                    <div key={tooth} className="flex flex-col items-center" style={{ minWidth: '44px' }}>
+                      <ToothSVG
+                        toothNumber={tooth}
+                        isUpper={true}
+                        data={teethData[tooth]}
+                        isSelected={selectedTooth === tooth}
+                        onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tableau Palatal - en bas */}
+              <SingleSurfaceTable
+                teeth={TEETH_UPPER}
+                teethData={teethData}
+                isUpper={true}
+                surface="lingual"
+                onUpdate={updateToothData}
+                toggleMissing={toggleMissing}
+                toggleImplant={toggleImplant}
+                updateMobility={updateMobility}
+                updateFurcation={updateFurcation}
+                showStatusRows={false}
+              />
+            </div>
+
+            {/* === STATS BAR === */}
+            <div className="flex justify-center items-center gap-4 py-2 bg-white rounded shadow text-[10px] text-slate-700 border border-slate-200">
+              <span>Mean Probing Depth = <strong className="text-blue-600">{Number(stats?.meanProbingDepth || 0).toFixed(1)} mm</strong></span>
+              <span>Mean Attachment Level = <strong className="text-purple-600">{Number(stats?.meanAttachmentLoss || 0).toFixed(1)} mm</strong></span>
+              <span><strong className="text-amber-600">{Number(stats?.plaqueIndex || 0).toFixed(0)}%</strong> Plaque</span>
+              <span><strong className="text-red-600">{Number(stats?.bleedingIndex || 0).toFixed(0)}%</strong> Bleeding on Probing</span>
+            </div>
+
+            {/* === ARCADE MANDIBULAIRE === */}
+            <div className="bg-white rounded-lg shadow border border-slate-300 overflow-x-auto">
+              {/* Tableau Lingual - en haut */}
+              <SingleSurfaceTable
+                teeth={TEETH_LOWER}
+                teethData={teethData}
+                isUpper={false}
+                surface="lingual"
+                onUpdate={updateToothData}
+                toggleMissing={toggleMissing}
+                toggleImplant={toggleImplant}
+                updateMobility={updateMobility}
+                updateFurcation={updateFurcation}
+                showStatusRows={false}
+              />
+
+              {/* Dents Lingual */}
+              <div className="py-1 bg-slate-50 border-y border-slate-200">
+                <div className="text-[9px] font-bold text-slate-600 text-center mb-1">Lingual</div>
+                <div className="flex justify-center">
+                  {TEETH_LOWER.map(tooth => (
+                    <div key={tooth} className="flex flex-col items-center" style={{ minWidth: '44px' }}>
+                      <ToothSVG
+                        toothNumber={tooth}
+                        isUpper={false}
+                        data={teethData[tooth]}
+                        isSelected={selectedTooth === tooth}
+                        onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dents Buccal */}
+              <div className="py-1 bg-slate-50 border-b border-slate-200">
+                <div className="text-[9px] font-bold text-slate-600 text-center mb-1">Buccal</div>
+                <div className="flex justify-center">
+                  {TEETH_LOWER.map(tooth => (
+                    <div key={tooth} className="flex flex-col items-center" style={{ minWidth: '44px' }}>
+                      <ToothSVG
+                        toothNumber={tooth}
+                        isUpper={false}
+                        data={teethData[tooth]}
+                        isSelected={selectedTooth === tooth}
+                        onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tableau Buccal - en bas */}
+              <SingleSurfaceTable
+                teeth={TEETH_LOWER}
+                teethData={teethData}
+                isUpper={false}
+                surface="buccal"
+                onUpdate={updateToothData}
+                toggleMissing={toggleMissing}
+                toggleImplant={toggleImplant}
+                updateMobility={updateMobility}
+                updateFurcation={updateFurcation}
+                showStatusRows={true}
+              />
+            </div>
           </div>
         ) : activeView === 'diagnostic' ? (
           /* Vue diagnostic */
