@@ -3104,23 +3104,23 @@ Cordialement`;
             {/* Statistiques globales */}
             <div className="bg-white rounded-lg shadow-lg p-4 flex flex-wrap gap-6 justify-center">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.meanProbingDepth.toFixed(1)} mm</div>
+                <div className="text-2xl font-bold text-blue-600">{(stats?.meanProbingDepth || 0).toFixed(1)} mm</div>
                 <div className="text-xs text-slate-600">Prof. sondage moy.</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{stats.meanAttachmentLoss.toFixed(1)} mm</div>
+                <div className="text-2xl font-bold text-purple-600">{(stats?.meanAttachmentLoss || 0).toFixed(1)} mm</div>
                 <div className="text-xs text-slate-600">Perte attache moy.</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{stats.plaqueIndex.toFixed(1)}%</div>
+                <div className="text-2xl font-bold text-yellow-600">{(stats?.plaqueIndex || 0).toFixed(1)}%</div>
                 <div className="text-xs text-slate-600">Indice de plaque</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{stats.bleedingIndex.toFixed(1)}%</div>
+                <div className="text-2xl font-bold text-red-600">{(stats?.bleedingIndex || 0).toFixed(1)}%</div>
                 <div className="text-xs text-slate-600">Saignement</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-slate-700">{stats.presentTeeth}</div>
+                <div className="text-2xl font-bold text-slate-700">{stats?.presentTeeth || 0}</div>
                 <div className="text-xs text-slate-600">Dents présentes</div>
               </div>
             </div>
