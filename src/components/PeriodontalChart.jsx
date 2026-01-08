@@ -1119,6 +1119,351 @@ const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper, autoFocus = fa
   );
 };
 
+// Composant Vue Clinique (style periodontalchart-online.com)
+const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
+  const toothWidth = 48;
+  const graphHeight = 120;
+  const toothHeight = 100;
+
+  const side1 = isUpper ? 'buccal' : 'lingual';
+  const side2 = isUpper ? 'lingual' : 'buccal';
+  const side1Label = isUpper ? 'Buccal' : 'Lingual';
+  const side2Label = isUpper ? 'Palatal' : 'Vestibulaire';
+
+  // Dessiner une dent clinique simplifiée
+  const renderClinicalTooth = (toothNum, index, side) => {
+    const data = teethData[toothNum];
+    const isMissing = data.missing;
+    const isImplant = data.implant;
+    const x = index * toothWidth;
+
+    // Déterminer le type de dent pour le dessin
+    const isMolar = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38].includes(toothNum);
+    const isPremolar = [15, 14, 24, 25, 45, 44, 34, 35].includes(toothNum);
+
+    if (isMissing && !isImplant) {
+      return (
+        <g key={toothNum} transform={`translate(${x}, 0)`}>
+          <line x1={toothWidth/2} y1={10} x2={toothWidth/2} y2={toothHeight-10} stroke="#ccc" strokeWidth="1" strokeDasharray="4,4" />
+        </g>
+      );
+    }
+
+    if (isImplant) {
+      return (
+        <g key={toothNum} transform={`translate(${x}, 0)`}>
+          {/* Implant stylisé */}
+          <rect x={toothWidth/2-8} y={10} width={16} height={toothHeight-20} fill="none" stroke="#666" strokeWidth="1.5" />
+          <line x1={toothWidth/2-6} y1={25} x2={toothWidth/2+6} y2={25} stroke="#666" strokeWidth="1" />
+          <line x1={toothWidth/2-6} y1={40} x2={toothWidth/2+6} y2={40} stroke="#666" strokeWidth="1" />
+          <line x1={toothWidth/2-6} y1={55} x2={toothWidth/2+6} y2={55} stroke="#666" strokeWidth="1" />
+          <line x1={toothWidth/2-6} y1={70} x2={toothWidth/2+6} y2={70} stroke="#666" strokeWidth="1" />
+        </g>
+      );
+    }
+
+    // Dent normale - dessin simplifié style clinique
+    const crownY = isUpper ? 50 : 10;
+    const rootY = isUpper ? 10 : 50;
+    const rootDirection = isUpper ? -1 : 1;
+
+    return (
+      <g key={toothNum} transform={`translate(${x}, 0)`}>
+        {/* Couronne */}
+        <path
+          d={isMolar
+            ? `M${toothWidth/2-15},${crownY} Q${toothWidth/2-15},${crownY+35*rootDirection} ${toothWidth/2},${crownY+40*rootDirection} Q${toothWidth/2+15},${crownY+35*rootDirection} ${toothWidth/2+15},${crownY} Z`
+            : isPremolar
+            ? `M${toothWidth/2-10},${crownY} Q${toothWidth/2-10},${crownY+30*rootDirection} ${toothWidth/2},${crownY+35*rootDirection} Q${toothWidth/2+10},${crownY+30*rootDirection} ${toothWidth/2+10},${crownY} Z`
+            : `M${toothWidth/2-8},${crownY} Q${toothWidth/2-8},${crownY+28*rootDirection} ${toothWidth/2},${crownY+32*rootDirection} Q${toothWidth/2+8},${crownY+28*rootDirection} ${toothWidth/2+8},${crownY} Z`
+          }
+          fill="white"
+          stroke="#333"
+          strokeWidth="1"
+        />
+        {/* Racines */}
+        {isMolar ? (
+          <>
+            <path d={`M${toothWidth/2-12},${rootY+40*rootDirection} Q${toothWidth/2-14},${rootY+20*rootDirection} ${toothWidth/2-10},${rootY}`} fill="none" stroke="#333" strokeWidth="1" />
+            <path d={`M${toothWidth/2},${rootY+40*rootDirection} L${toothWidth/2},${rootY}`} fill="none" stroke="#333" strokeWidth="1" />
+            <path d={`M${toothWidth/2+12},${rootY+40*rootDirection} Q${toothWidth/2+14},${rootY+20*rootDirection} ${toothWidth/2+10},${rootY}`} fill="none" stroke="#333" strokeWidth="1" />
+          </>
+        ) : isPremolar ? (
+          <>
+            <path d={`M${toothWidth/2-5},${rootY+35*rootDirection} L${toothWidth/2-3},${rootY}`} fill="none" stroke="#333" strokeWidth="1" />
+            <path d={`M${toothWidth/2+5},${rootY+35*rootDirection} L${toothWidth/2+3},${rootY}`} fill="none" stroke="#333" strokeWidth="1" />
+          </>
+        ) : (
+          <path d={`M${toothWidth/2},${rootY+32*rootDirection} L${toothWidth/2},${rootY}`} fill="none" stroke="#333" strokeWidth="1" />
+        )}
+      </g>
+    );
+  };
+
+  // Ligne de sondage
+  const renderProbingLine = (side) => {
+    const baseY = 50; // Ligne de la jonction émail-cément
+    const points = teeth.flatMap((tooth, i) => {
+      const data = teethData[tooth];
+      if (data.missing && !data.implant) return [];
+      const probing = data[side].probing;
+      return probing.map((p, j) => {
+        const x = i * toothWidth + (j + 0.5) * (toothWidth / 3);
+        const y = baseY + p * 3 * (isUpper ? -1 : 1);
+        return `${x},${y}`;
+      });
+    });
+    return points.length > 0 ? <polyline points={points.join(' ')} fill="none" stroke="#dc2626" strokeWidth="1.5" /> : null;
+  };
+
+  // Ligne gingivale (recession)
+  const renderGingivalLine = (side) => {
+    const baseY = 50;
+    const points = teeth.flatMap((tooth, i) => {
+      const data = teethData[tooth];
+      if (data.missing && !data.implant) return [];
+      const recession = data[side].recession;
+      return recession.map((r, j) => {
+        const x = i * toothWidth + (j + 0.5) * (toothWidth / 3);
+        const y = baseY + r * 3 * (isUpper ? -1 : 1);
+        return `${x},${y}`;
+      });
+    });
+    return points.length > 0 ? <polyline points={points.join(' ')} fill="none" stroke="#2563eb" strokeWidth="1.5" /> : null;
+  };
+
+  // Rendu d'une cellule de données
+  const DataCell = ({ value, type, tooth, side, index, onChange }) => {
+    const data = teethData[tooth];
+    const isMissing = data.missing && !data.implant;
+
+    if (type === 'mobility') {
+      return (
+        <td className="border border-slate-300 text-center text-xs p-0 w-12 bg-white">
+          <input
+            type="number"
+            min="0"
+            max="3"
+            value={data.mobility}
+            disabled={isMissing}
+            onChange={(e) => onChange(tooth, 'mobility', parseInt(e.target.value) || 0)}
+            className={`w-full text-center text-xs py-0.5 border-0 focus:ring-1 focus:ring-blue-500 ${isMissing ? 'bg-slate-100 text-slate-400' : ''}`}
+          />
+        </td>
+      );
+    }
+
+    if (type === 'implant') {
+      return (
+        <td className="border border-slate-300 text-center p-0 w-12 bg-white">
+          <input
+            type="checkbox"
+            checked={data.implant}
+            onChange={(e) => onChange(tooth, 'implant', e.target.checked)}
+            className="w-3 h-3"
+          />
+        </td>
+      );
+    }
+
+    if (type === 'furcation') {
+      const furcValue = data[side]?.furcation || 0;
+      return (
+        <td className="border border-slate-300 text-center text-xs p-0 w-12 bg-white">
+          <select
+            value={furcValue}
+            disabled={isMissing || ![18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38].includes(tooth)}
+            onChange={(e) => {
+              const newData = { ...data[side], furcation: parseInt(e.target.value) };
+              onChange(tooth, side, newData);
+            }}
+            className={`w-full text-center text-xs py-0.5 border-0 ${isMissing ? 'bg-slate-100' : ''}`}
+          >
+            <option value="0"></option>
+            <option value="1">I</option>
+            <option value="2">II</option>
+            <option value="3">III</option>
+          </select>
+        </td>
+      );
+    }
+
+    if (type === 'bleeding') {
+      return (
+        <td className="border border-slate-300 p-0 bg-white" colSpan="1">
+          <div className="flex">
+            {data[side].bleeding.map((b, idx) => (
+              <button
+                key={idx}
+                disabled={isMissing}
+                onClick={() => {
+                  const newBleeding = [...data[side].bleeding];
+                  newBleeding[idx] = !newBleeding[idx];
+                  onUpdate(tooth, side, 'bleeding', newBleeding);
+                }}
+                className={`flex-1 h-4 border-r border-slate-200 last:border-r-0 ${b ? 'bg-red-500' : isMissing ? 'bg-slate-100' : 'bg-white hover:bg-red-100'}`}
+              />
+            ))}
+          </div>
+        </td>
+      );
+    }
+
+    if (type === 'plaque') {
+      return (
+        <td className="border border-slate-300 p-0 bg-white" colSpan="1">
+          <div className="flex">
+            {data[side].plaque.map((p, idx) => (
+              <button
+                key={idx}
+                disabled={isMissing}
+                onClick={() => {
+                  const newPlaque = [...data[side].plaque];
+                  newPlaque[idx] = !newPlaque[idx];
+                  onUpdate(tooth, side, 'plaque', newPlaque);
+                }}
+                className={`flex-1 h-4 border-r border-slate-200 last:border-r-0 ${p ? 'bg-yellow-400' : isMissing ? 'bg-slate-100' : 'bg-white hover:bg-yellow-100'}`}
+              />
+            ))}
+          </div>
+        </td>
+      );
+    }
+
+    if (type === 'probing' || type === 'recession') {
+      const values = data[side][type];
+      return (
+        <td className="border border-slate-300 p-0 bg-white" colSpan="1">
+          <div className="flex">
+            {values.map((v, idx) => (
+              <input
+                key={idx}
+                type="number"
+                min="0"
+                max="15"
+                value={v}
+                disabled={isMissing}
+                onChange={(e) => {
+                  const newValues = [...values];
+                  newValues[idx] = parseInt(e.target.value) || 0;
+                  onUpdate(tooth, side, type, newValues);
+                }}
+                className={`w-4 text-center text-[10px] py-0 border-0 border-r border-slate-200 last:border-r-0 focus:ring-1 focus:ring-blue-500 ${isMissing ? 'bg-slate-100 text-slate-400' : v >= 5 ? 'text-red-600 font-bold' : v >= 4 ? 'text-orange-500' : ''}`}
+              />
+            ))}
+          </div>
+        </td>
+      );
+    }
+
+    return <td className="border border-slate-300 text-center text-xs p-1 bg-white">{value}</td>;
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-4 overflow-x-auto">
+      <h3 className="text-lg font-semibold text-slate-800 mb-4">
+        {isUpper ? 'Arcade Maxillaire' : 'Arcade Mandibulaire'}
+      </h3>
+
+      {/* Tableau de données - Face 1 */}
+      <table className="w-full border-collapse text-xs mb-2">
+        <thead>
+          <tr>
+            <th className="border border-slate-300 bg-slate-100 p-1 text-left w-24"></th>
+            {teeth.map(tooth => (
+              <th key={tooth} className="border border-slate-300 bg-slate-100 p-1 text-center w-12 font-medium">
+                {tooth}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Mobilité</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="mobility" tooth={tooth} onChange={(t, field, val) => onUpdate(t, null, field, val)} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Implant</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="implant" tooth={tooth} onChange={(t, field, val) => onUpdate(t, null, field, val)} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Furcation</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="furcation" tooth={tooth} side={side1} onChange={(t, s, val) => {}} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Saignement</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="bleeding" tooth={tooth} side={side1} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Plaque</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="plaque" tooth={tooth} side={side1} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Récession</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="recession" tooth={tooth} side={side1} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Sondage</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="probing" tooth={tooth} side={side1} />)}
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Zone graphique - Face 1 (Buccal/Lingual) */}
+      <div className="my-2">
+        <div className="text-xs font-medium text-slate-600 mb-1">{side1Label}</div>
+        <svg width={teeth.length * toothWidth} height={toothHeight} className="bg-slate-50 rounded border border-slate-200">
+          {/* Ligne de référence (jonction émail-cément) */}
+          <line x1="0" y1="50" x2={teeth.length * toothWidth} y2="50" stroke="#dc2626" strokeWidth="2" />
+          {/* Dents */}
+          {teeth.map((tooth, i) => renderClinicalTooth(tooth, i, side1))}
+          {/* Lignes de sondage */}
+          {renderProbingLine(side1)}
+        </svg>
+      </div>
+
+      {/* Zone graphique - Face 2 (Palatal/Vestibulaire) */}
+      <div className="my-2">
+        <div className="text-xs font-medium text-slate-600 mb-1">{side2Label}</div>
+        <svg width={teeth.length * toothWidth} height={toothHeight} className="bg-slate-50 rounded border border-slate-200">
+          {/* Ligne de référence */}
+          <line x1="0" y1="50" x2={teeth.length * toothWidth} y2="50" stroke="#dc2626" strokeWidth="2" />
+          {/* Dents */}
+          {teeth.map((tooth, i) => renderClinicalTooth(tooth, i, side2))}
+          {/* Lignes de sondage */}
+          {renderProbingLine(side2)}
+        </svg>
+      </div>
+
+      {/* Tableau de données - Face 2 */}
+      <table className="w-full border-collapse text-xs mt-2">
+        <tbody>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium w-24">Sondage</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="probing" tooth={tooth} side={side2} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Récession</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="recession" tooth={tooth} side={side2} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Plaque</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="plaque" tooth={tooth} side={side2} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Saignement</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="bleeding" tooth={tooth} side={side2} />)}
+          </tr>
+          <tr>
+            <td className="border border-slate-300 bg-slate-50 p-1 font-medium">Furcation</td>
+            {teeth.map(tooth => <DataCell key={tooth} type="furcation" tooth={tooth} side={side2} onChange={(t, s, val) => {}} />)}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // Composant principal
 export default function PeriodontalChart() {
   const [teethData, setTeethData] = useState(initializeTeethData());
@@ -2484,6 +2829,16 @@ Cordialement`;
             Vue tableau
           </button>
           <button
+            onClick={() => setActiveView('clinical')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'clinical'
+                ? 'bg-emerald-500 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Vue clinique
+          </button>
+          <button
             onClick={() => setActiveView('diagnostic')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeView === 'diagnostic'
@@ -2742,6 +3097,51 @@ Cordialement`;
                 isUpper={false}
               />
             </div>
+          </div>
+        ) : activeView === 'clinical' ? (
+          /* Vue clinique combinée */
+          <div className="space-y-6">
+            {/* Statistiques globales */}
+            <div className="bg-white rounded-lg shadow-lg p-4 flex flex-wrap gap-6 justify-center">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{stats.meanProbingDepth.toFixed(1)} mm</div>
+                <div className="text-xs text-slate-600">Prof. sondage moy.</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{stats.meanAttachmentLoss.toFixed(1)} mm</div>
+                <div className="text-xs text-slate-600">Perte attache moy.</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{stats.plaqueIndex.toFixed(1)}%</div>
+                <div className="text-xs text-slate-600">Indice de plaque</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{stats.bleedingIndex.toFixed(1)}%</div>
+                <div className="text-xs text-slate-600">Saignement</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-slate-700">{stats.presentTeeth}</div>
+                <div className="text-xs text-slate-600">Dents présentes</div>
+              </div>
+            </div>
+
+            {/* Arcade Maxillaire */}
+            <ClinicalChartView
+              teeth={TEETH_UPPER}
+              teethData={teethData}
+              isUpper={true}
+              onUpdate={updateToothData}
+              stats={stats}
+            />
+
+            {/* Arcade Mandibulaire */}
+            <ClinicalChartView
+              teeth={TEETH_LOWER}
+              teethData={teethData}
+              isUpper={false}
+              onUpdate={updateToothData}
+              stats={stats}
+            />
           </div>
         ) : activeView === 'diagnostic' ? (
           /* Vue diagnostic */
