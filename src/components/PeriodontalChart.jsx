@@ -1167,7 +1167,342 @@ const SVG_BOUNDS = {
   lower: { minX: 103, maxX: 10222, minY: 1260, maxY: 2889 }
 };
 
-const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
+// Composant pour tableau compact de données dentaires (style clinique)
+const ClinicalDataTable = ({ teeth, teethData, isUpper, onUpdate, toggleMissing, toggleImplant, updateMobility, updateFurcation }) => {
+  const surfaceLabel1 = 'Vestibulaire';
+  const surfaceLabel2 = isUpper ? 'Palatin' : 'Lingual';
+
+  // Render compact input for probing/recession (3 values in one cell)
+  const renderTripleInput = (tooth, surface, type, color = 'slate') => {
+    const data = teethData[tooth][surface][type];
+    const colors = {
+      slate: 'border-slate-200',
+      red: 'bg-red-50 border-red-200'
+    };
+    return (
+      <div className="flex gap-0.5 justify-center">
+        {data.map((val, idx) => (
+          <input
+            key={idx}
+            type="number"
+            min={type === 'recession' ? -10 : 0}
+            max="15"
+            value={val || ''}
+            disabled={teethData[tooth].missing && !teethData[tooth].implant}
+            onChange={(e) => {
+              const newVals = [...data];
+              newVals[idx] = parseInt(e.target.value) || 0;
+              onUpdate(tooth, surface, type, newVals);
+            }}
+            className={`w-6 h-5 text-center text-[10px] border rounded focus:ring-1 focus:ring-sky-400
+              ${teethData[tooth].missing && !teethData[tooth].implant ? 'bg-slate-100 text-slate-400' :
+                type === 'probing' && val >= 5 ? 'bg-red-100 border-red-300 text-red-700 font-bold' :
+                type === 'probing' && val >= 4 ? 'bg-amber-100 border-amber-300 text-amber-700' :
+                `bg-white ${colors[color]}`}`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  // Render boolean indicators (3 circles in one cell)
+  const renderTripleBoolean = (tooth, surface, type, color) => {
+    const data = teethData[tooth][surface][type];
+    const colorMap = {
+      bleeding: { active: 'bg-red-500', inactive: 'bg-slate-200' },
+      plaque: { active: 'bg-amber-400', inactive: 'bg-slate-200' },
+      suppuration: { active: 'bg-purple-500', inactive: 'bg-slate-200' }
+    };
+    return (
+      <div className="flex gap-0.5 justify-center">
+        {data.map((val, idx) => (
+          <button
+            key={idx}
+            disabled={teethData[tooth].missing && !teethData[tooth].implant}
+            onClick={() => {
+              const newVals = [...data];
+              newVals[idx] = !newVals[idx];
+              onUpdate(tooth, surface, type, newVals);
+            }}
+            className={`w-5 h-4 rounded-full border transition-all
+              ${val ? colorMap[color].active + ' border-transparent' : colorMap[color].inactive + ' border-slate-300'}
+              ${teethData[tooth].missing && !teethData[tooth].implant ? 'opacity-40' : 'hover:opacity-80'}`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="border-collapse text-[10px] w-full" style={{ minWidth: 'max-content' }}>
+        <thead>
+          {/* Tooth numbers row */}
+          <tr className="bg-slate-100">
+            <th className="sticky left-0 bg-slate-100 px-1 py-1 text-left font-semibold border border-slate-300 w-16 z-10">
+              {isUpper ? 'Maxillaire' : 'Mandibulaire'}
+            </th>
+            {teeth.map(tooth => (
+              <th key={tooth} className={`px-1 py-1 text-center border border-slate-300 min-w-[70px]
+                ${teethData[tooth].missing ? 'text-slate-400 bg-slate-50' : 'text-slate-700'}`}>
+                <span className="font-bold text-xs">{tooth}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {/* Absente / Implant row */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 font-medium z-10">Status</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                <div className="flex gap-0.5 justify-center">
+                  <button
+                    onClick={() => toggleMissing(tooth)}
+                    className={`px-1 py-0.5 rounded text-[9px] font-medium transition-all
+                      ${teethData[tooth].missing ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    Abs
+                  </button>
+                  <button
+                    onClick={() => toggleImplant(tooth)}
+                    className={`px-1 py-0.5 rounded text-[9px] font-medium transition-all
+                      ${teethData[tooth].implant ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    Imp
+                  </button>
+                </div>
+              </td>
+            ))}
+          </tr>
+
+          {/* Mobilité row */}
+          <tr className="bg-slate-50">
+            <td className="sticky left-0 bg-slate-50 px-1 py-0.5 text-slate-600 border border-slate-200 font-medium z-10">Mobilité</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                <div className="flex gap-0.5 justify-center">
+                  {[0, 1, 2, 3].map(m => (
+                    <button
+                      key={m}
+                      onClick={() => updateMobility(tooth, m)}
+                      disabled={teethData[tooth].missing && !teethData[tooth].implant}
+                      className={`w-4 h-4 rounded text-[9px] font-medium transition-all
+                        ${teethData[tooth].mobility === m ? 'bg-sky-500 text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}
+                        ${teethData[tooth].missing && !teethData[tooth].implant ? 'opacity-40' : ''}`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </td>
+            ))}
+          </tr>
+
+          {/* Furcation row (only for molars) */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 font-medium z-10">Furcation</td>
+            {teeth.map(tooth => {
+              const hasFurcation = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38].includes(tooth);
+              if (!hasFurcation) {
+                return <td key={tooth} className="px-0.5 py-0.5 border border-slate-200 bg-slate-50 text-center text-slate-300">-</td>;
+              }
+              const furc = teethData[tooth].furcation;
+              const maxFurc = Math.max(furc.buccal || 0, furc.lingual || 0, furc.mesial || 0, furc.distal || 0);
+              return (
+                <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                  <div className="flex gap-0.5 justify-center">
+                    {[0, 1, 2, 3].map(f => (
+                      <button
+                        key={f}
+                        onClick={() => updateFurcation(tooth, 'buccal', f)}
+                        disabled={teethData[tooth].missing && !teethData[tooth].implant}
+                        className={`w-4 h-4 rounded text-[9px] transition-all
+                          ${maxFurc === f && f > 0 ?
+                            f === 1 ? 'bg-green-500 text-white' :
+                            f === 2 ? 'bg-amber-500 text-white' :
+                            'bg-red-500 text-white'
+                          : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}
+                          ${teethData[tooth].missing && !teethData[tooth].implant ? 'opacity-40' : ''}`}
+                      >
+                        {f === 0 ? '○' : f === 1 ? '◔' : f === 2 ? '◑' : '●'}
+                      </button>
+                    ))}
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
+
+          {/* Vestibulaire section header */}
+          <tr className="bg-blue-50">
+            <td colSpan={teeth.length + 1} className="px-1 py-0.5 text-blue-700 font-semibold border border-slate-200 text-center">
+              {surfaceLabel1}
+            </td>
+          </tr>
+
+          {/* Vestibulaire SOND */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 z-10">SOND</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleInput(tooth, 'buccal', 'probing')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Vestibulaire REC */}
+          <tr className="bg-slate-50">
+            <td className="sticky left-0 bg-slate-50 px-1 py-0.5 text-slate-600 border border-slate-200 z-10">REC</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleInput(tooth, 'buccal', 'recession')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Vestibulaire Saign. */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 z-10">Saign.</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleBoolean(tooth, 'buccal', 'bleeding', 'bleeding')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Vestibulaire PLQ */}
+          <tr className="bg-slate-50">
+            <td className="sticky left-0 bg-slate-50 px-1 py-0.5 text-slate-600 border border-slate-200 z-10">PLQ</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleBoolean(tooth, 'buccal', 'plaque', 'plaque')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Vestibulaire SUP */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 z-10">SUP</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleBoolean(tooth, 'buccal', 'suppuration', 'suppuration')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Palatin/Lingual section header */}
+          <tr className="bg-purple-50">
+            <td colSpan={teeth.length + 1} className="px-1 py-0.5 text-purple-700 font-semibold border border-slate-200 text-center">
+              {surfaceLabel2}
+            </td>
+          </tr>
+
+          {/* Palatin/Lingual SOND */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 z-10">SOND</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleInput(tooth, 'lingual', 'probing')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Palatin/Lingual REC */}
+          <tr className="bg-slate-50">
+            <td className="sticky left-0 bg-slate-50 px-1 py-0.5 text-slate-600 border border-slate-200 z-10">REC</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleInput(tooth, 'lingual', 'recession')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Palatin/Lingual Saign. */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 z-10">Saign.</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleBoolean(tooth, 'lingual', 'bleeding', 'bleeding')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Palatin/Lingual PLQ */}
+          <tr className="bg-slate-50">
+            <td className="sticky left-0 bg-slate-50 px-1 py-0.5 text-slate-600 border border-slate-200 z-10">PLQ</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleBoolean(tooth, 'lingual', 'plaque', 'plaque')}
+              </td>
+            ))}
+          </tr>
+
+          {/* Palatin/Lingual SUP */}
+          <tr className="bg-white">
+            <td className="sticky left-0 bg-white px-1 py-0.5 text-slate-600 border border-slate-200 z-10">SUP</td>
+            {teeth.map(tooth => (
+              <td key={tooth} className="px-0.5 py-0.5 border border-slate-200">
+                {renderTripleBoolean(tooth, 'lingual', 'suppuration', 'suppuration')}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Schéma dentaire compact pour la vue clinique
+const DentalSchemaCompact = ({ teethUpper, teethLower, teethData, selectedTooth, setSelectedTooth }) => {
+  return (
+    <div className="bg-gradient-to-b from-slate-50 to-white rounded-xl p-4 border border-slate-200">
+      <h3 className="text-sm font-semibold text-slate-700 text-center mb-3">Schéma Dentaire</h3>
+
+      {/* Arcade supérieure */}
+      <div className="flex justify-center mb-2">
+        {teethUpper.map(tooth => (
+          <div key={tooth} className="flex flex-col items-center mx-0.5">
+            <ToothSVG
+              toothNumber={tooth}
+              isUpper={true}
+              data={teethData[tooth]}
+              isSelected={selectedTooth === tooth}
+              onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+            />
+            <span className={`text-[9px] font-medium ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-600'}`}>
+              {tooth}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Séparateur */}
+      <div className="border-t border-dashed border-slate-300 my-2"></div>
+
+      {/* Arcade inférieure */}
+      <div className="flex justify-center">
+        {teethLower.map(tooth => (
+          <div key={tooth} className="flex flex-col items-center mx-0.5">
+            <span className={`text-[9px] font-medium ${teethData[tooth].missing ? 'text-slate-400' : 'text-slate-600'}`}>
+              {tooth}
+            </span>
+            <ToothSVG
+              toothNumber={tooth}
+              isUpper={false}
+              data={teethData[tooth]}
+              isSelected={selectedTooth === tooth}
+              onClick={() => setSelectedTooth(selectedTooth === tooth ? null : tooth)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Ancien composant ClinicalChartView conservé pour compatibilité si besoin
+const ClinicalChartViewLegacy = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
   // Configuration des largeurs par type de dent (style periodontalchart-online)
   const getToothWidth = (toothNum) => {
     const num = toothNum % 10;
@@ -3296,49 +3631,68 @@ Cordialement`;
             </div>
           </div>
         ) : activeView === 'clinical' ? (
-          /* Vue clinique combinée */
-          <div className="space-y-6">
-            {/* Statistiques globales */}
-            <div className="bg-white rounded-lg shadow-lg p-4 flex flex-wrap gap-6 justify-center">
+          /* Vue clinique combinée - nouveau format compact */
+          <div className="space-y-4">
+            {/* Statistiques globales compactes */}
+            <div className="bg-white rounded-lg shadow-lg p-3 flex flex-wrap gap-4 justify-center items-center">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{Number(stats?.meanProbingDepth || 0).toFixed(1)} mm</div>
-                <div className="text-xs text-slate-600">Prof. sondage moy.</div>
+                <div className="text-lg font-bold text-blue-600">{Number(stats?.meanProbingDepth || 0).toFixed(1)} mm</div>
+                <div className="text-[10px] text-slate-600">Prof. sondage</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{Number(stats?.meanAttachmentLoss || 0).toFixed(1)} mm</div>
-                <div className="text-xs text-slate-600">Perte attache moy.</div>
+                <div className="text-lg font-bold text-purple-600">{Number(stats?.meanAttachmentLoss || 0).toFixed(1)} mm</div>
+                <div className="text-[10px] text-slate-600">Perte attache</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{Number(stats?.plaqueIndex || 0).toFixed(1)}%</div>
-                <div className="text-xs text-slate-600">Indice de plaque</div>
+                <div className="text-lg font-bold text-yellow-600">{Number(stats?.plaqueIndex || 0).toFixed(1)}%</div>
+                <div className="text-[10px] text-slate-600">Plaque</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{Number(stats?.bleedingIndex || 0).toFixed(1)}%</div>
-                <div className="text-xs text-slate-600">Saignement</div>
+                <div className="text-lg font-bold text-red-600">{Number(stats?.bleedingIndex || 0).toFixed(1)}%</div>
+                <div className="text-[10px] text-slate-600">Saignement</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-slate-700">{stats?.presentTeeth || 0}</div>
-                <div className="text-xs text-slate-600">Dents présentes</div>
+                <div className="text-lg font-bold text-slate-700">{stats?.presentTeeth || 0}</div>
+                <div className="text-[10px] text-slate-600">Dents</div>
               </div>
             </div>
 
-            {/* Arcade Maxillaire */}
-            <ClinicalChartView
-              teeth={TEETH_UPPER}
+            {/* Arcade Maxillaire - Tableau compact */}
+            <div className="bg-white rounded-lg shadow-lg p-3 border border-slate-200">
+              <ClinicalDataTable
+                teeth={TEETH_UPPER}
+                teethData={teethData}
+                isUpper={true}
+                onUpdate={updateToothData}
+                toggleMissing={toggleMissing}
+                toggleImplant={toggleImplant}
+                updateMobility={updateMobility}
+                updateFurcation={updateFurcation}
+              />
+            </div>
+
+            {/* Schéma dentaire au centre */}
+            <DentalSchemaCompact
+              teethUpper={TEETH_UPPER}
+              teethLower={TEETH_LOWER}
               teethData={teethData}
-              isUpper={true}
-              onUpdate={updateToothData}
-              stats={stats}
+              selectedTooth={selectedTooth}
+              setSelectedTooth={setSelectedTooth}
             />
 
-            {/* Arcade Mandibulaire */}
-            <ClinicalChartView
-              teeth={TEETH_LOWER}
-              teethData={teethData}
-              isUpper={false}
-              onUpdate={updateToothData}
-              stats={stats}
-            />
+            {/* Arcade Mandibulaire - Tableau compact */}
+            <div className="bg-white rounded-lg shadow-lg p-3 border border-slate-200">
+              <ClinicalDataTable
+                teeth={TEETH_LOWER}
+                teethData={teethData}
+                isUpper={false}
+                onUpdate={updateToothData}
+                toggleMissing={toggleMissing}
+                toggleImplant={toggleImplant}
+                updateMobility={updateMobility}
+                updateFurcation={updateFurcation}
+              />
+            </div>
           </div>
         ) : activeView === 'diagnostic' ? (
           /* Vue diagnostic */
