@@ -3044,7 +3044,7 @@ export default function PeriodontalChart() {
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(0, 0, 0);
-      pdf.text('Dents: ' + stats.totalTeeth + '  |  Sites: ' + stats.totalSites + '  |  Indice de saignement: ' + stats.bop + '%  |  Plaque: ' + stats.plaqueIndex + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
+      pdf.text('Dents: ' + stats.totalTeeth + '  |  Sites: ' + stats.totalSites + '  |  Indice de saignement: ' + stats.bop + '%  |  Plaque: ' + Number(stats.plaqueIndex).toFixed(1) + '%  |  Poches >=5mm: ' + stats.deepPockets + '  |  Poches 4mm: ' + stats.moderatePockets, margin + 5, yPos + 13);
 
       yPos += 25;
 
@@ -3924,7 +3924,7 @@ Cordialement`;
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-500">Indice de plaque:</span>
               <span className={`font-bold ${stats.plaqueIndex > 30 ? 'text-amber-600' : 'text-green-600'}`}>
-                {stats.plaqueIndex}%
+                {Number(stats.plaqueIndex).toFixed(1)}%
               </span>
             </div>
             <div className="flex items-center gap-2">
