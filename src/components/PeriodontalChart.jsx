@@ -1120,6 +1120,102 @@ const DataGrid = ({ teeth, teethData, surface, onUpdate, isUpper, autoFocus = fa
 };
 
 // Composant Vue Clinique (style periodontalchart-online.com)
+// SVG Tooth Paths - extracted from professional dental chart SVG
+// Each path is defined relative to a 100x100 viewBox, centered at (50,50)
+// Upper teeth have roots pointing down (positive Y), lower teeth have roots pointing up (negative Y)
+const TOOTH_SVG_PATHS = {
+  // Molaires (dents 6, 7, 8) - 3 racines pour maxillaire, 2 pour mandibulaire
+  molar_upper: {
+    crown: "M20,50 C20,35 25,20 50,15 C75,20 80,35 80,50 L80,50 L20,50 Z",
+    roots: [
+      "M25,50 C22,60 20,75 22,90 L28,90 C30,75 28,60 30,50",
+      "M45,50 L45,95 L55,95 L55,50",
+      "M70,50 C72,60 75,75 73,90 L78,90 C80,75 78,60 75,50"
+    ],
+    rootFill: "M20,50 L25,50 C22,60 20,75 22,90 L28,90 C30,75 28,60 30,50 L45,50 L45,95 L55,95 L55,50 L70,50 C72,60 75,75 73,90 L78,90 C80,75 78,60 75,50 L80,50 L80,50 L20,50 Z"
+  },
+  molar_lower: {
+    crown: "M20,50 C20,65 25,80 50,85 C75,80 80,65 80,50 L80,50 L20,50 Z",
+    roots: [
+      "M30,50 C28,40 25,25 27,10 L33,10 C35,25 32,40 35,50",
+      "M65,50 C68,40 70,25 68,10 L73,10 C75,25 72,40 70,50"
+    ],
+    rootFill: "M20,50 L30,50 C28,40 25,25 27,10 L33,10 C35,25 32,40 35,50 L65,50 C68,40 70,25 68,10 L73,10 C75,25 72,40 70,50 L80,50 L80,50 L20,50 Z"
+  },
+  // Prémolaires (dents 4, 5) - 1-2 racines
+  premolar_upper: {
+    crown: "M25,50 C25,38 30,22 50,18 C70,22 75,38 75,50 L75,50 L25,50 Z",
+    roots: [
+      "M40,50 L38,92",
+      "M60,50 L62,92"
+    ],
+    rootFill: "M25,50 L40,50 L38,92 L42,92 L45,50 L55,50 L58,92 L62,92 L60,50 L75,50 L75,50 L25,50 Z"
+  },
+  premolar_lower: {
+    crown: "M25,50 C25,62 30,78 50,82 C70,78 75,62 75,50 L75,50 L25,50 Z",
+    roots: [
+      "M50,50 L50,8"
+    ],
+    rootFill: "M25,50 L47,50 L47,8 L53,8 L53,50 L75,50 L75,50 L25,50 Z"
+  },
+  // Canines (dent 3) - racine longue unique
+  canine_upper: {
+    crown: "M28,50 C28,40 32,22 50,15 C68,22 72,40 72,50 L72,50 L28,50 Z",
+    roots: [
+      "M50,50 L50,98"
+    ],
+    rootFill: "M28,50 L47,50 L47,98 L53,98 L53,50 L72,50 L72,50 L28,50 Z"
+  },
+  canine_lower: {
+    crown: "M28,50 C28,60 32,78 50,85 C68,78 72,60 72,50 L72,50 L28,50 Z",
+    roots: [
+      "M50,50 L50,2"
+    ],
+    rootFill: "M28,50 L47,50 L47,2 L53,2 L53,50 L72,50 L72,50 L28,50 Z"
+  },
+  // Incisives latérales (dent 2)
+  lateral_upper: {
+    crown: "M30,50 C30,40 35,25 50,18 C65,25 70,40 70,50 L70,50 L30,50 Z",
+    roots: [
+      "M50,50 L50,90"
+    ],
+    rootFill: "M30,50 L47,50 L47,90 L53,90 L53,50 L70,50 L70,50 L30,50 Z"
+  },
+  lateral_lower: {
+    crown: "M30,50 C30,60 35,75 50,82 C65,75 70,60 70,50 L70,50 L30,50 Z",
+    roots: [
+      "M50,50 L50,10"
+    ],
+    rootFill: "M30,50 L47,50 L47,10 L53,10 L53,50 L70,50 L70,50 L30,50 Z"
+  },
+  // Incisives centrales (dent 1)
+  central_upper: {
+    crown: "M25,50 C25,38 32,20 50,14 C68,20 75,38 75,50 L75,50 L25,50 Z",
+    roots: [
+      "M50,50 L50,88"
+    ],
+    rootFill: "M25,50 L47,50 L47,88 L53,88 L53,50 L75,50 L75,50 L25,50 Z"
+  },
+  central_lower: {
+    crown: "M30,50 C30,62 35,78 50,84 C65,78 70,62 70,50 L70,50 L30,50 Z",
+    roots: [
+      "M50,50 L50,12"
+    ],
+    rootFill: "M30,50 L47,50 L47,12 L53,12 L53,50 L70,50 L70,50 L30,50 Z"
+  }
+};
+
+// Fonction pour obtenir le type de dent basé sur le numéro FDI
+const getToothType = (toothNum, isUpper) => {
+  const num = toothNum % 10;
+  const suffix = isUpper ? '_upper' : '_lower';
+  if (num === 8 || num === 7 || num === 6) return 'molar' + suffix;
+  if (num === 5 || num === 4) return 'premolar' + suffix;
+  if (num === 3) return 'canine' + suffix;
+  if (num === 2) return 'lateral' + suffix;
+  return 'central' + suffix;
+};
+
 const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
   // Configuration des largeurs par type de dent (style periodontalchart-online)
   const getToothWidth = (toothNum) => {
@@ -1143,15 +1239,15 @@ const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
 
   const toothPositions = getToothPositions();
   const totalWidth = toothPositions.reduce((sum, p) => sum + p.width, 0);
-  const graphHeight = 120;
-  const baselineY = 60; // Ligne de base (jonction émail-cément)
+  const graphHeight = 140;
+  const baselineY = 70; // Ligne de base (jonction émail-cément)
   const scale = 4; // Pixels par mm
 
   const side1 = isUpper ? 'buccal' : 'lingual';
   const side2 = isUpper ? 'lingual' : 'buccal';
   const side1Label = isUpper ? 'Buccal' : 'Lingual';
   const side2Label = isUpper ? 'Palatal' : 'Vestibulaire';
-  const direction = isUpper ? -1 : 1;
+  const direction = isUpper ? 1 : -1;
 
   // Générer le polygone de poche parodontale
   const renderPocketPolygon = (side) => {
@@ -1257,32 +1353,31 @@ const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
     ) : null;
   };
 
-  // Dessiner une dent réaliste
+  // Dessiner une dent réaliste avec SVG paths
   const renderTooth = (pos, side) => {
     const { tooth, x, width } = pos;
     const data = teethData[tooth];
     const isMissing = data.missing;
     const isImplant = data.implant;
 
-    const num = tooth % 10;
-    const isMolar = num >= 6;
-    const isPremolar = num === 4 || num === 5;
-    const isCanine = num === 3;
-
     const cx = x + width / 2;
-    const crownTop = isUpper ? baselineY : baselineY;
-    const crownBottom = isUpper ? baselineY - 35 : baselineY + 35;
-    const rootEnd = isUpper ? baselineY + 45 : baselineY - 45;
+    const toothType = getToothType(tooth, isUpper);
+    const toothPaths = TOOTH_SVG_PATHS[toothType];
+
+    // Échelle pour ajuster la taille du SVG de la dent
+    const toothHeight = 65;
+    const scaleX = width / 100;
+    const scaleY = toothHeight / 100;
 
     if (isMissing && !isImplant) {
       return (
         <g key={tooth}>
           <line
-            x1={cx} y1={isUpper ? baselineY - 30 : baselineY + 30}
-            x2={cx} y2={isUpper ? baselineY + 40 : baselineY - 40}
-            stroke="#ddd" strokeWidth="1" strokeDasharray="3,3"
+            x1={cx} y1={isUpper ? baselineY - 25 : baselineY + 25}
+            x2={cx} y2={isUpper ? baselineY + 45 : baselineY - 45}
+            stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,2"
           />
-          <text x={cx} y={isUpper ? graphHeight - 5 : 12} textAnchor="middle" fontSize="9" fill="#999">{tooth}</text>
+          <text x={cx} y={isUpper ? graphHeight - 5 : 12} textAnchor="middle" fontSize="9" fill="#9ca3af">{tooth}</text>
         </g>
       );
     }
@@ -1290,92 +1385,72 @@ const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
     if (isImplant) {
       return (
         <g key={tooth}>
-          {/* Corps de l'implant */}
+          {/* Corps de l'implant - forme trapézoïdale avec filetage */}
           <path
             d={isUpper
-              ? `M${cx-8},${baselineY} L${cx-6},${baselineY+35} L${cx},${baselineY+42} L${cx+6},${baselineY+35} L${cx+8},${baselineY} Z`
-              : `M${cx-8},${baselineY} L${cx-6},${baselineY-35} L${cx},${baselineY-42} L${cx+6},${baselineY-35} L${cx+8},${baselineY} Z`
+              ? `M${cx-10},${baselineY} L${cx-7},${baselineY+40} L${cx},${baselineY+48} L${cx+7},${baselineY+40} L${cx+10},${baselineY} Z`
+              : `M${cx-10},${baselineY} L${cx-7},${baselineY-40} L${cx},${baselineY-48} L${cx+7},${baselineY-40} L${cx+10},${baselineY} Z`
             }
-            fill="#e5e7eb" stroke="#6b7280" strokeWidth="1"
+            fill="#d1d5db" stroke="#6b7280" strokeWidth="1"
           />
-          {/* Filetage */}
-          {[10, 18, 26, 34].map(offset => (
+          {/* Filetage de l'implant */}
+          {[8, 16, 24, 32, 40].map(offset => (
             <line
               key={offset}
-              x1={cx-5} y1={isUpper ? baselineY + offset : baselineY - offset}
-              x2={cx+5} y2={isUpper ? baselineY + offset : baselineY - offset}
+              x1={cx-6} y1={isUpper ? baselineY + offset : baselineY - offset}
+              x2={cx+6} y2={isUpper ? baselineY + offset : baselineY - offset}
               stroke="#9ca3af" strokeWidth="0.5"
             />
           ))}
-          {/* Couronne */}
-          <ellipse cx={cx} cy={isUpper ? baselineY - 15 : baselineY + 15} rx={width/2 - 4} ry={12} fill="#f3f4f6" stroke="#6b7280" strokeWidth="1" />
+          {/* Couronne sur implant */}
+          <ellipse
+            cx={cx}
+            cy={isUpper ? baselineY - 18 : baselineY + 18}
+            rx={width/2 - 4}
+            ry={14}
+            fill="#f9fafb"
+            stroke="#6b7280"
+            strokeWidth="1"
+          />
           <text x={cx} y={isUpper ? graphHeight - 5 : 12} textAnchor="middle" fontSize="9" fill="#374151" fontWeight="500">{tooth}</text>
         </g>
       );
     }
 
-    // Dent normale
-    const crownWidth = width - 8;
-    const rootSpread = isMolar ? width * 0.35 : isPremolar ? width * 0.2 : 0;
+    // Dent normale avec SVG paths
+    const transform = `translate(${x}, ${isUpper ? baselineY - toothHeight/2 : baselineY - toothHeight/2}) scale(${scaleX}, ${scaleY})`;
 
     return (
       <g key={tooth}>
-        {/* Couronne */}
+        {/* Zone de fond pour la dent (racines) */}
         <path
-          d={isUpper
-            ? `M${cx - crownWidth/2},${baselineY}
-               Q${cx - crownWidth/2},${baselineY - 25} ${cx},${baselineY - 32}
-               Q${cx + crownWidth/2},${baselineY - 25} ${cx + crownWidth/2},${baselineY} Z`
-            : `M${cx - crownWidth/2},${baselineY}
-               Q${cx - crownWidth/2},${baselineY + 25} ${cx},${baselineY + 32}
-               Q${cx + crownWidth/2},${baselineY + 25} ${cx + crownWidth/2},${baselineY} Z`
-          }
-          fill="white" stroke="#374151" strokeWidth="1"
+          d={toothPaths.rootFill}
+          transform={transform}
+          fill="#fefefe"
+          stroke="none"
+        />
+
+        {/* Couronne de la dent */}
+        <path
+          d={toothPaths.crown}
+          transform={transform}
+          fill="white"
+          stroke="#374151"
+          strokeWidth={1.5 / Math.min(scaleX, scaleY)}
         />
 
         {/* Racines */}
-        {isMolar ? (
-          // 3 racines pour molaires maxillaires, 2 pour mandibulaires
-          isUpper ? (
-            <>
-              <path d={`M${cx - rootSpread},${baselineY} Q${cx - rootSpread - 3},${baselineY + 25} ${cx - rootSpread + 2},${baselineY + 42}`} fill="none" stroke="#374151" strokeWidth="1" />
-              <path d={`M${cx},${baselineY} L${cx},${baselineY + 45}`} fill="none" stroke="#374151" strokeWidth="1" />
-              <path d={`M${cx + rootSpread},${baselineY} Q${cx + rootSpread + 3},${baselineY + 25} ${cx + rootSpread - 2},${baselineY + 42}`} fill="none" stroke="#374151" strokeWidth="1" />
-            </>
-          ) : (
-            <>
-              <path d={`M${cx - rootSpread/2},${baselineY} Q${cx - rootSpread/2 - 2},${baselineY - 25} ${cx - rootSpread/2 + 2},${baselineY - 42}`} fill="none" stroke="#374151" strokeWidth="1" />
-              <path d={`M${cx + rootSpread/2},${baselineY} Q${cx + rootSpread/2 + 2},${baselineY - 25} ${cx + rootSpread/2 - 2},${baselineY - 42}`} fill="none" stroke="#374151" strokeWidth="1" />
-            </>
-          )
-        ) : isPremolar ? (
-          // 1-2 racines pour prémolaires
-          <>
-            <path
-              d={isUpper
-                ? `M${cx - 3},${baselineY} L${cx - 4},${baselineY + 38}`
-                : `M${cx - 3},${baselineY} L${cx - 4},${baselineY - 38}`
-              }
-              fill="none" stroke="#374151" strokeWidth="1"
-            />
-            <path
-              d={isUpper
-                ? `M${cx + 3},${baselineY} L${cx + 4},${baselineY + 38}`
-                : `M${cx + 3},${baselineY} L${cx + 4},${baselineY - 38}`
-              }
-              fill="none" stroke="#374151" strokeWidth="1"
-            />
-          </>
-        ) : (
-          // Racine unique pour incisives et canines
+        {toothPaths.roots.map((rootPath, idx) => (
           <path
-            d={isUpper
-              ? `M${cx},${baselineY} L${cx},${baselineY + (isCanine ? 48 : 40)}`
-              : `M${cx},${baselineY} L${cx},${baselineY - (isCanine ? 48 : 40)}`
-            }
-            fill="none" stroke="#374151" strokeWidth="1"
+            key={idx}
+            d={rootPath}
+            transform={transform}
+            fill="none"
+            stroke="#374151"
+            strokeWidth={1.2 / Math.min(scaleX, scaleY)}
+            strokeLinecap="round"
           />
-        )}
+        ))}
 
         {/* Numéro de dent */}
         <text x={cx} y={isUpper ? graphHeight - 5 : 12} textAnchor="middle" fontSize="9" fill="#374151" fontWeight="500">{tooth}</text>
