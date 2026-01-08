@@ -1334,21 +1334,22 @@ const ClinicalChartView = ({ teeth, teethData, isUpper, onUpdate, stats }) => {
       const values = data[side][type];
       return (
         <td className="border border-slate-300 p-0 bg-white" colSpan="1">
-          <div className="flex">
+          <div className="flex justify-center">
             {values.map((v, idx) => (
               <input
                 key={idx}
-                type="number"
-                min="0"
-                max="15"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={v}
                 disabled={isMissing}
                 onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
                   const newValues = [...values];
-                  newValues[idx] = parseInt(e.target.value) || 0;
+                  newValues[idx] = Math.min(15, Math.max(0, val));
                   onUpdate(tooth, side, type, newValues);
                 }}
-                className={`w-4 text-center text-[10px] py-0 border-0 border-r border-slate-200 last:border-r-0 focus:ring-1 focus:ring-blue-500 ${isMissing ? 'bg-slate-100 text-slate-400' : v >= 5 ? 'text-red-600 font-bold' : v >= 4 ? 'text-orange-500' : ''}`}
+                className={`w-3 text-center text-[10px] py-0.5 border-0 border-r border-slate-200 last:border-r-0 focus:bg-blue-50 focus:outline-none ${isMissing ? 'bg-slate-100 text-slate-400' : v >= 5 ? 'text-red-600 font-bold' : v >= 4 ? 'text-orange-500' : ''}`}
               />
             ))}
           </div>
