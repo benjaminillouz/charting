@@ -5,10 +5,24 @@ export default function MobilePhotoCapture({ peerId }) {
   const [status, setStatus] = useState('connecting'); // connecting, connected, sending, sent, error
   const [error, setError] = useState(null);
   const [photoTaken, setPhotoTaken] = useState(null);
+
+  // Camera controls state
+  const [showGrid, setShowGrid] = useState(false);
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Capabilities state
+  const [capabilities, setCapabilities] = useState({
+    zoom: { supported: false, min: 1, max: 1 },
+    torch: { supported: false },
+    focusMode: { supported: false }
+  });
+
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const trackRef = useRef(null);
 
   useEffect(() => {
     // Initialize peer connection
@@ -52,16 +66,94 @@ export default function MobilePhotoCapture({ peerId }) {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
         audio: false
       });
       streamRef.current = stream;
+
+      const videoTrack = stream.getVideoTracks()[0];
+      trackRef.current = videoTrack;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+      }
+
+      // Get track capabilities
+      if (videoTrack && typeof videoTrack.getCapabilities === 'function') {
+        const caps = videoTrack.getCapabilities();
+
+        const newCapabilities = {
+          zoom: { supported: false, min: 1, max: 1 },
+          torch: { supported: false },
+          focusMode: { supported: false }
+        };
+
+        // Check zoom support
+        if (caps.zoom) {
+          newCapabilities.zoom = {
+            supported: true,
+            min: caps.zoom.min || 1,
+            max: caps.zoom.max || 1
+          };
+          setZoomLevel(caps.zoom.min || 1);
+        }
+
+        // Check torch/flash support
+        if (caps.torch !== undefined) {
+          newCapabilities.torch = { supported: true };
+        }
+
+        // Check focus mode support
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          newCapabilities.focusMode = { supported: true };
+          // Enable continuous autofocus
+          try {
+            await videoTrack.applyConstraints({
+              advanced: [{ focusMode: 'continuous' }]
+            });
+          } catch (e) {
+            console.log('Could not enable continuous autofocus:', e);
+          }
+        }
+
+        setCapabilities(newCapabilities);
       }
     } catch (err) {
       setError('Impossible d\'accéder à la caméra: ' + err.message);
       setStatus('error');
+    }
+  };
+
+  // Handle zoom change
+  const handleZoomChange = async (newZoom) => {
+    if (!trackRef.current || !capabilities.zoom.supported) return;
+
+    try {
+      await trackRef.current.applyConstraints({
+        advanced: [{ zoom: newZoom }]
+      });
+      setZoomLevel(newZoom);
+    } catch (err) {
+      console.log('Could not change zoom:', err);
+    }
+  };
+
+  // Handle flash/torch toggle
+  const toggleFlash = async () => {
+    if (!trackRef.current || !capabilities.torch.supported) return;
+
+    try {
+      const newFlashState = !flashEnabled;
+      await trackRef.current.applyConstraints({
+        advanced: [{ torch: newFlashState }]
+      });
+      setFlashEnabled(newFlashState);
+    } catch (err) {
+      console.log('Could not toggle flash:', err);
     }
   };
 
@@ -76,6 +168,14 @@ export default function MobilePhotoCapture({ peerId }) {
 
     const imageData = canvas.toDataURL('image/jpeg', 0.85);
     setPhotoTaken(imageData);
+
+    // Turn off flash when photo is taken
+    if (flashEnabled && trackRef.current) {
+      trackRef.current.applyConstraints({
+        advanced: [{ torch: false }]
+      }).catch(() => {});
+      setFlashEnabled(false);
+    }
   };
 
   const retakePhoto = () => {
@@ -110,16 +210,38 @@ export default function MobilePhotoCapture({ peerId }) {
     startCamera();
   };
 
+  const closeCapture = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (connRef.current) {
+      connRef.current.close();
+    }
+    window.close();
+  };
+
+  // Rule of thirds grid overlay
+  const GridOverlay = () => (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Vertical lines */}
+      <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/40"></div>
+      <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/40"></div>
+      {/* Horizontal lines */}
+      <div className="absolute top-1/3 left-0 right-0 h-px bg-white/40"></div>
+      <div className="absolute top-2/3 left-0 right-0 h-px bg-white/40"></div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">
       {/* Header */}
-      <header className="bg-teal-600 text-white p-4 text-center">
-        <h1 className="text-xl font-bold">HelloParo</h1>
-        <p className="text-sm text-teal-100">Capture photo patient</p>
+      <header className="bg-teal-600 text-white p-3 text-center">
+        <h1 className="text-lg font-bold">HelloParo</h1>
+        <p className="text-xs text-teal-100">Capture photo patient</p>
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <div className="flex-1 flex flex-col items-center justify-center p-2">
         {status === 'connecting' && (
           <div className="text-center text-white">
             <svg className="animate-spin w-12 h-12 mx-auto mb-4 text-teal-400" fill="none" viewBox="0 0 24 24">
@@ -151,7 +273,63 @@ export default function MobilePhotoCapture({ peerId }) {
 
         {status === 'connected' && !photoTaken && (
           <div className="w-full max-w-md">
-            <div className="relative rounded-2xl overflow-hidden bg-black mb-4">
+            {/* Camera view with controls */}
+            <div className="relative rounded-2xl overflow-hidden bg-black mb-3">
+              {/* Top bar with grid and flash buttons */}
+              <div className="absolute top-0 left-0 right-0 z-20 flex justify-between items-center p-2">
+                {/* Grid toggle button */}
+                <button
+                  onClick={() => setShowGrid(!showGrid)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    showGrid ? 'bg-white/30' : 'bg-black/30'
+                  }`}
+                >
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16M8 4v16M16 4v16" />
+                  </svg>
+                </button>
+
+                {/* Flash toggle button - only show if supported */}
+                {capabilities.torch.supported && (
+                  <button
+                    onClick={toggleFlash}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      flashEnabled ? 'bg-yellow-400' : 'bg-black/30'
+                    }`}
+                  >
+                    <svg className={`w-6 h-6 ${flashEnabled ? 'text-slate-900' : 'text-white'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Zoom slider - only show if supported */}
+              {capabilities.zoom.supported && capabilities.zoom.max > capabilities.zoom.min && (
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1 bg-black/40 rounded-full py-3 px-1">
+                  <span className="text-white text-[10px] font-medium">{zoomLevel.toFixed(1)}x</span>
+                  <input
+                    type="range"
+                    min={capabilities.zoom.min}
+                    max={capabilities.zoom.max}
+                    step={0.1}
+                    value={zoomLevel}
+                    onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                    className="h-24 appearance-none bg-transparent cursor-pointer"
+                    style={{
+                      writingMode: 'vertical-lr',
+                      direction: 'rtl',
+                      WebkitAppearance: 'slider-vertical',
+                      width: '24px'
+                    }}
+                  />
+                  <svg className="w-4 h-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Video element */}
               <video
                 ref={videoRef}
                 autoPlay
@@ -159,17 +337,41 @@ export default function MobilePhotoCapture({ peerId }) {
                 muted
                 className="w-full"
               />
+
+              {/* Grid overlay */}
+              {showGrid && <GridOverlay />}
             </div>
-            <button
-              onClick={takePhoto}
-              className="w-full py-4 bg-teal-500 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 active:bg-teal-600"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Prendre la photo
-            </button>
+
+            {/* Bottom controls */}
+            <div className="flex items-center justify-center gap-6">
+              {/* Retake/Cancel button */}
+              <button
+                onClick={closeCapture}
+                className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center active:bg-slate-600"
+              >
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Capture button */}
+              <button
+                onClick={takePhoto}
+                className="w-16 h-16 rounded-full bg-white flex items-center justify-center active:bg-slate-200 ring-4 ring-white/30"
+              >
+                <div className="w-12 h-12 rounded-full bg-white border-4 border-slate-900"></div>
+              </button>
+
+              {/* Switch camera placeholder (for future) */}
+              <button
+                onClick={() => {}}
+                className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center active:bg-slate-600"
+              >
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
@@ -228,7 +430,7 @@ export default function MobilePhotoCapture({ peerId }) {
       </div>
 
       {/* Footer */}
-      <footer className="p-4 text-center text-slate-500 text-sm">
+      <footer className="p-2 text-center text-slate-500 text-xs">
         HelloParo - CEMEDIS
       </footer>
     </div>
